@@ -11,10 +11,18 @@ export default defineConfig(async ({ mode }) => {
     env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHABLE_KEY || "";
 
   return {
+    base: env.GITHUB_PAGES === "true" ? "/prime-proposal-generator/" : "/",
     plugins: [
       tsconfigPaths(),
       tailwindcss(),
-      await tanstackStart(),
+      await tanstackStart({
+        spa: {
+          enabled: true,
+          prerender: {
+            outputPath: "/index.html",
+          },
+        },
+      }),
       react(),
     ],
     define: {
