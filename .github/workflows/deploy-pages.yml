@@ -33,7 +33,9 @@ jobs:
         run: npm run build:pages
         env:
           GITHUB_PAGES: "true"
-          VITE_LOCAL_DEV: "true"
+          VITE_LOCAL_DEV: "false"
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
 

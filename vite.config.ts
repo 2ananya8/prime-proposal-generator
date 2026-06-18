@@ -5,13 +5,22 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig(async ({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const pick = (...keys: string[]) => {
+    for (const key of keys) {
+      const fromFile = env[key];
+      if (typeof fromFile === "string" && fromFile.length > 0) return fromFile;
+      const fromProcess = process.env[key];
+      if (typeof fromProcess === "string" && fromProcess.length > 0) return fromProcess;
+    }
+    return "";
+  };
   const { tanstackStart } = await import("@tanstack/react-start/plugin/vite");
-  const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL || "";
-  const supabaseAnonKey =
-    env.VITE_SUPABASE_PUBLISHABLE_KEY || env.SUPABASE_PUBLISHABLE_KEY || "";
+  const supabaseUrl = pick("VITE_SUPABASE_URL", "SUPABASE_URL");
+  const supabaseAnonKey = pick("VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEY");
+  const githubPages = pick("GITHUB_PAGES");
 
   return {
-    base: env.GITHUB_PAGES === "true" ? "/prime-proposal-generator/" : "/",
+    base: githubPages === "true" ? "/prime-proposal-generator/" : "/",
     plugins: [
       tsconfigPaths(),
       tailwindcss(),
