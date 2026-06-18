@@ -14,6 +14,7 @@ import {
   WATERMARK_MAX_WIDTH_FRACTION,
   WATERMARK_OPACITY,
 } from "@/lib/proposal-header-footer.constants";
+import { publicAsset } from "@/lib/public-asset";
 
 function ImageFallback({ alt, className, style }: { alt: string; className?: string; style?: React.CSSProperties }) {
   return (
@@ -23,7 +24,7 @@ function ImageFallback({ alt, className, style }: { alt: string; className?: str
       role="img"
       aria-label={alt}
     >
-      <img src="/assets/image-unavailable.svg" alt="" className="h-8 w-8 opacity-60 mb-1" aria-hidden />
+      <img src={publicAsset("/assets/image-unavailable.svg")} alt="" className="h-8 w-8 opacity-60 mb-1" aria-hidden />
       <span className="text-[10px] uppercase tracking-wide">Unable to load image</span>
       <span className="text-xs font-semibold mt-1 px-2">{alt}</span>
     </div>
@@ -91,7 +92,7 @@ export function ProposalPageFooter() {
 export function ProposalPageWatermark() {
   return (
     <img
-      src="/assets/watermark.png"
+      src={publicAsset("/assets/watermark.png")}
       alt=""
       aria-hidden
       className="proposal-page-watermark pointer-events-none select-none absolute top-1/2 left-1/2 z-0 -translate-x-1/2 -translate-y-1/2"

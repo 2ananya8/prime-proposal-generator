@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, Link, useRouterState } from "@tanstack/react-r
 import { FileText, Wrench, LayoutDashboard } from "lucide-react";
 import { hasSupabaseConfig, isLocalStorageMode } from "@/lib/app-config";
 import { PRIME_LOGO_ALT } from "@/lib/proposal-header-footer.constants";
+import { publicAsset } from "@/lib/public-asset";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -34,7 +35,7 @@ function Shell() {
         <div className="border-b p-3">
           <div className="flex items-center justify-center px-3 py-2">
             <img
-              src="/assets/prime-logo.png"
+              src={publicAsset("/assets/prime-logo.png")}
               alt={PRIME_LOGO_ALT}
               className="h-9 w-auto max-w-full object-contain"
             />

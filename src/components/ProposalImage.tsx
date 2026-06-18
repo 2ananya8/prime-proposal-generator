@@ -1,4 +1,10 @@
 import { useState } from "react";
+import { publicAsset } from "@/lib/public-asset";
+
+function resolveAssetSrc(src: string): string {
+  if (src.startsWith("/assets/")) return publicAsset(src);
+  return src;
+}
 
 type Props = {
   src: string;
@@ -20,7 +26,7 @@ export function ProposalImage({ src, alt, className = "", fallbackClassName = ""
         aria-label={alt}
       >
         <img
-          src="/assets/image-unavailable.svg"
+          src={publicAsset("/assets/image-unavailable.svg")}
           alt=""
           className="h-8 w-8 opacity-60 mb-1"
           aria-hidden
@@ -34,7 +40,7 @@ export function ProposalImage({ src, alt, className = "", fallbackClassName = ""
 
   return (
     <img
-      src={src}
+      src={resolveAssetSrc(src)}
       alt={alt}
       className={className}
       style={style}
