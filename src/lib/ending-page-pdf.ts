@@ -4,7 +4,7 @@ import {
   embedPdfImage,
   loadContactUsIllustration,
   loadPrimeLogo,
-} from "./cover-page-assets.server";
+} from "./cover-page-assets";
 import { pdfContentBottomLimit, pdfContentTopY, type PdfChrome } from "./proposal-header-footer-pdf";
 import { PDF_PAGE_W } from "./proposal-header-footer.constants";
 import { ENDING_COMPANY_NAME, ENDING_CONTACT_LINES } from "./proposal-ending-page";

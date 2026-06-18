@@ -7,8 +7,11 @@ export const generateProposalFiles = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => input as ProposalPreviewData)
   .handler(async ({ data }) => {
     try {
-      const { generateProposalDocx } = await import("./generate-docx.server");
-      const { generateProposalPdf } = await import("./generate-pdf.server");
+      await import("./cover-page-assets.server");
+      const { preloadCoverAssets } = await import("./cover-page-assets");
+      await preloadCoverAssets();
+      const { generateProposalDocx } = await import("./generate-docx");
+      const { generateProposalPdf } = await import("./generate-pdf");
 
       const docxBuf = await generateProposalDocx(data);
       const pdfBuf = await generateProposalPdf(data);

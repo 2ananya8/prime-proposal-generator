@@ -12,7 +12,7 @@ import {
   placeholderImage,
   scaleToFit,
   type ParsedImage,
-} from "./cover-page-assets.server";
+} from "./cover-page-assets";
 import {
   COVER_ILLUSTRATION_HEIGHT_PX,
   COVER_PRIME_LOGO_HEIGHT_PX,

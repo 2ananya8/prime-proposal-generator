@@ -11,8 +11,8 @@ import {
   getProposalFooterImage,
   getProposalHeaderImages,
   getProposalWatermarkImage,
-} from "./proposal-header-footer.server";
-import { getImageDimensions, scaleToFit, type ParsedImage } from "./cover-page-assets.server";
+} from "./proposal-header-footer";
+import { getImageDimensions, scaleToFit, type ParsedImage } from "./cover-page-assets";
 import {
   BODY_TOP_MARGIN_TWIPS,
   BRAND_HEX,

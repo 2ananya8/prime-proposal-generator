@@ -19,7 +19,7 @@ import {
   COMMERCIALS_TABLE_HEADERS,
 } from "./commercials-table";
 import { drawPdfEndingContent } from "./ending-page-pdf";
-import { embedProposalPdfFonts } from "./proposal-fonts.server";
+import { embedProposalPdfFonts } from "./proposal-fonts";
 
 const MARGIN = 50;
 const PAGE_W = 595.28;

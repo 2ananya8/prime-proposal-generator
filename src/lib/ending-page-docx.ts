@@ -4,7 +4,7 @@ import {
   loadContactUsIllustration,
   loadPrimeLogo,
   scaleToFit,
-} from "./cover-page-assets.server";
+} from "./cover-page-assets";
 import { PROPOSAL_FONT_NAME } from "./proposal-fonts.constants";
 import { ENDING_COMPANY_NAME, ENDING_CONTACT_LINES } from "./proposal-ending-page";
 

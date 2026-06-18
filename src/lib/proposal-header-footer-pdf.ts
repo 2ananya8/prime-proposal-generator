@@ -1,11 +1,11 @@
 import { rgb, type PDFDocument, type PDFImage, type PDFPage } from "pdf-lib";
 import type { ProposalPreviewData } from "./proposal-preview";
-import { embedPdfImage, scaleToFit } from "./cover-page-assets.server";
+import { embedPdfImage, scaleToFit } from "./cover-page-assets";
 import {
   getProposalFooterImage,
   getProposalHeaderImages,
   getProposalWatermarkImage,
-} from "./proposal-header-footer.server";
+} from "./proposal-header-footer";
 import {
   BODY_TOP_MARGIN_TWIPS,
   CLIENT_LOGO_MAX_INCH,

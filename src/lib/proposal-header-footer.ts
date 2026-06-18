@@ -6,7 +6,7 @@ import {
   parseImageDataUrl,
   placeholderImage,
   type ParsedImage,
-} from "./cover-page-assets.server";
+} from "./cover-page-assets";
 import { clientLogoAlt } from "./proposal-header-footer.constants";
 
 export function resolveClientLogo(

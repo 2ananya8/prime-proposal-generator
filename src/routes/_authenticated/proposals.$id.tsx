@@ -1,6 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ArrowLeft, Eye, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { lineItemAmount } from "@/lib/commercials-line-item";
-import { generateProposalFiles } from "@/lib/proposals.functions";
+import { generateProposalFilesLocally } from "@/lib/generate-proposal-files";
 import { Input } from "@/components/ui/input";
 import { deleteProposal, getProposal, updateProposalClientLogo, updateProposalSummary } from "@/lib/data-api";
 import { LOGO_ACCEPT, readLogoFileAsDataUrl } from "@/lib/image-upload";
@@ -21,7 +20,6 @@ export const Route = createFileRoute("/_authenticated/proposals/$id")({
 function ProposalDetail() {
   const { id } = Route.useParams();
   const nav = useNavigate();
-  const gen = useServerFn(generateProposalFiles);
   const [generating, setGenerating] = useState(false);
   const [editingSummary, setEditingSummary] = useState(false);
   const [summary, setSummary] = useState("");
@@ -57,7 +55,7 @@ function ProposalDetail() {
 
     setGenerating(true);
     try {
-      const { docxBase64, pdfBase64 } = await gen({ data: previewData });
+      const { docxBase64, pdfBase64 } = await generateProposalFilesLocally(previewData);
       const safeClient = p.client_name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
       const base = `${safeClient}-${service.short_code || service.service_type}`;
       triggerDownload(docxBase64, `${base}.docx`, "application/vnd.openxmlformats-officedocument.wordprocessingml.document");

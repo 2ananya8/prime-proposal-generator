@@ -9,7 +9,7 @@ import {
   parseImageDataUrl,
   placeholderImage,
   type ParsedImage,
-} from "./cover-page-assets.server";
+} from "./cover-page-assets";
 import { COVER_ILLUSTRATION_HEIGHT_PT } from "./cover-page.constants";
 import {
   COVER_PRIME_LOGO_TOP_PT,
