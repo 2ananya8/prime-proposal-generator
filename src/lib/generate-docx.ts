@@ -392,6 +392,6 @@ export async function generateProposalDocx(input: ProposalPreviewData): Promise<
     ],
   });
 
-  const buf = await Packer.toBuffer(doc);
-  return new Uint8Array(buf);
+  const arrayBuffer = await Packer.toArrayBuffer(doc);
+  return new Uint8Array(arrayBuffer);
 }
