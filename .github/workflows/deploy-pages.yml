@@ -12,7 +12,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -42,6 +42,13 @@ jobs:
           FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
           VITE_ANTHROPIC_API_KEY: ${{ secrets.VITE_ANTHROPIC_API_KEY }}
           VITE_FIRECRAWL_API_KEY: ${{ secrets.VITE_FIRECRAWL_API_KEY }}
+
+      - name: Verify build output
+        run: |
+          test -f dist/client/index.html
+          test -f dist/client/404.html
+          test -d dist/client/assets
+          ls dist/client/assets | head -5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

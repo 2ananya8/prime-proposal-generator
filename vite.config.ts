@@ -37,6 +37,7 @@ export default defineConfig(async ({ mode }) => {
       react(),
     ],
     define: {
+      "import.meta.env.BASE_URL": JSON.stringify(githubPages === "true" ? "/prime-proposal-generator/" : "/"),
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(supabaseAnonKey),
       "import.meta.env.VITE_ANTHROPIC_API_KEY": JSON.stringify(anthropicApiKey),

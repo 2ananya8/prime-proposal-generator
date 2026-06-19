@@ -9,6 +9,7 @@
     "build:pages": "vite build && node scripts/prepare-github-pages.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
+    "preview:pages": "vite preview --base /prime-proposal-generator/",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
