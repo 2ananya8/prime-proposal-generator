@@ -33,6 +33,7 @@ import {
 } from "@/lib/service-field-helpers";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { ObjectListEditor } from "@/components/ListEditor";
+import { MilestonesEditor } from "@/components/MilestonesEditor";
 import { CommercialsTable } from "@/components/CommercialsTable";
 import { CommercialsLineItemsEditor } from "@/components/CommercialsLineItemsEditor";
 import type { CommercialLineItem } from "@/lib/commercials-line-item";
@@ -449,12 +450,7 @@ export function ProposalWizardReview(props: ProposalWizardReviewProps) {
             />
           }
           editor={
-            <ObjectListEditor
-              value={milestones as any}
-              onChange={setMilestones as any}
-              fields={[{ key: "label", label: "Milestone" }, { key: "percent", label: "%", positiveNumeric: true }]}
-              template={{ label: "", percent: 0 } as any}
-            />
+            <MilestonesEditor value={milestones} onChange={setMilestones} />
           }
         />
       ) : null}

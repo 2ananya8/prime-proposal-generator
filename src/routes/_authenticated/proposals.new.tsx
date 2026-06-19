@@ -18,6 +18,7 @@ import { timelineObjectsFromService } from "@/lib/service-field-helpers";
 import { ClientResearchForm } from "@/components/ClientResearchForm";
 import { ServiceForm, emptyService, type ServiceFormValue } from "@/components/ServiceForm";
 import { ObjectListEditor } from "@/components/ListEditor";
+import { MilestonesEditor, milestoneTotalErrorMessage } from "@/components/MilestonesEditor";
 import { ProposalWizardReview } from "@/components/ProposalWizardReview";
 import { CommercialsLineItemsEditor } from "@/components/CommercialsLineItemsEditor";
 import {
@@ -27,6 +28,7 @@ import {
   type CommercialLineItem,
 } from "@/lib/commercials-line-item";
 import { buildWizardPreviewData, type ProposalContentOverrides } from "@/lib/proposal-preview";
+import { isMilestonePercentTotalValid } from "@/lib/milestones";
 import { plainTextField } from "@/lib/html-content";
 import { scopeFieldsToSummaryString, type ScopeField } from "@/lib/scope-fields";
 import { RichTextEditor } from "@/components/RichTextEditor";
@@ -241,11 +243,17 @@ function Wizard() {
       return;
     }
     if (step === 2 && !serviceId) return toast.error("Pick a service");
+    if (step === 7 && !isMilestonePercentTotalValid(milestones)) {
+      return toast.error(milestoneTotalErrorMessage());
+    }
     setStep(Math.min(STEPS.length - 1, step + 1));
   };
   const back = () => setStep(Math.max(0, step - 1));
 
   const save = async () => {
+    if (!isMilestonePercentTotalValid(milestones)) {
+      return toast.error(milestoneTotalErrorMessage());
+    }
     setSaving(true);
     try {
       const data = await createProposal({
@@ -402,7 +410,7 @@ function Wizard() {
 
       {step === 7 && (
         <Card><CardHeader><CardTitle className="text-base">Payment Milestones</CardTitle></CardHeader><CardContent>
-          <ObjectListEditor value={milestones as any} onChange={setMilestones as any} fields={[{ key: "label", label: "Milestone" }, { key: "percent", label: "%", positiveNumeric: true }]} template={{ label: "", percent: 0 } as any} />
+          <MilestonesEditor value={milestones} onChange={setMilestones} />
         </CardContent></Card>
       )}
 
