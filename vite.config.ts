@@ -17,6 +17,8 @@ export default defineConfig(async ({ mode }) => {
   const { tanstackStart } = await import("@tanstack/react-start/plugin/vite");
   const supabaseUrl = pick("VITE_SUPABASE_URL", "SUPABASE_URL");
   const supabaseAnonKey = pick("VITE_SUPABASE_PUBLISHABLE_KEY", "SUPABASE_PUBLISHABLE_KEY");
+  const anthropicApiKey = pick("VITE_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY");
+  const firecrawlApiKey = pick("VITE_FIRECRAWL_API_KEY", "FIRECRAWL_API_KEY");
   const githubPages = pick("GITHUB_PAGES");
 
   return {
@@ -37,6 +39,8 @@ export default defineConfig(async ({ mode }) => {
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(supabaseUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(supabaseAnonKey),
+      "import.meta.env.VITE_ANTHROPIC_API_KEY": JSON.stringify(anthropicApiKey),
+      "import.meta.env.VITE_FIRECRAWL_API_KEY": JSON.stringify(firecrawlApiKey),
     },
     server: {
       port: 3000,

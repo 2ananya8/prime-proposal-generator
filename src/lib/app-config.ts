@@ -17,6 +17,16 @@ export function getSupabaseAnonKey(env: EnvSource = readEnv()): string | undefin
   return typeof key === "string" && key.length > 0 ? key : undefined;
 }
 
+export function getAnthropicApiKey(env: EnvSource = readEnv()): string | undefined {
+  const key = env.VITE_ANTHROPIC_API_KEY ?? env.ANTHROPIC_API_KEY;
+  return typeof key === "string" && key.length > 0 ? key : undefined;
+}
+
+export function getFirecrawlApiKey(env: EnvSource = readEnv()): string | undefined {
+  const key = env.VITE_FIRECRAWL_API_KEY ?? env.FIRECRAWL_API_KEY;
+  return typeof key === "string" && key.length > 0 ? key : undefined;
+}
+
 /** True when Supabase URL + anon key are configured. */
 export function hasSupabaseConfig(env: EnvSource = readEnv()): boolean {
   return !!(getSupabaseUrl(env) && getSupabaseAnonKey(env));

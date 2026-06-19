@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { createProposal, createService, listServicesFull } from "@/lib/data-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Loader2, Sparkles, Plus } from "lucide-react";
 import { LOGO_ACCEPT, readLogoFileAsDataUrl, validateLogoDataUrl } from "@/lib/image-upload";
-import { researchClient, draftExecutiveSummary } from "@/lib/research.functions";
+import { runClientResearch, runDraftExecutiveSummary } from "@/lib/research-client";
 import { emptyClientResearch, type ClientResearch } from "@/lib/client-research";
 import { timelineObjectsFromService } from "@/lib/service-field-helpers";
 import { ClientResearchForm } from "@/components/ClientResearchForm";
@@ -74,9 +73,6 @@ function Wizard() {
   const [extras, setExtras] = useState<{ title: string; content: string }[]>([]);
   const [contentOverrides, setContentOverrides] = useState<ProposalContentOverrides>({});
   const [saving, setSaving] = useState(false);
-
-  const research_fn = useServerFn(researchClient);
-  const draft_fn = useServerFn(draftExecutiveSummary);
 
   const services = useQuery({ queryKey: ["services-all"], queryFn: listServicesFull });
   const selectedService = useMemo(() => services.data?.find((s: any) => s.id === serviceId), [services.data, serviceId]);
@@ -184,7 +180,7 @@ function Wizard() {
     const manual = emptyClientResearch(clientName, clientWebsite);
     if (!research) setResearch(manual);
     try {
-      const r = await research_fn({ data: { clientName, clientWebsite: clientWebsite || null } });
+      const r = await runClientResearch({ clientName, clientWebsite: clientWebsite || null });
       applyResearch(r);
       if (r.research_status === "success") toast.success("Company research complete");
       else if (r.research_status === "partial") toast.message("Partial research — please review and edit the fields");
@@ -204,7 +200,7 @@ function Wizard() {
     setDraftingSummary(true);
     if (preferAi) setExecSummaryPreferAi(true);
     try {
-      const r = await draft_fn({ data: executiveSummaryDraftInput });
+      const r = await runDraftExecutiveSummary(executiveSummaryDraftInput);
       setExecSummaryAi(r.executive_summary);
       if ("fallback" in r && r.fallback && r.message) toast.message(r.message);
     } catch (e: any) { toast.error(e.message || "Draft failed"); }
