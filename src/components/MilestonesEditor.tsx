@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import {
   appendMilestone,
   formatMilestonePercentField,
+  isMilestonePercentTotalOverMax,
   isMilestonePercentTotalValid,
   milestonePercentTotal,
   MILESTONE_PERCENT_MAX,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/milestones";
 import { cn } from "@/lib/utils";
 import { Plus, X } from "lucide-react";
+import { toast } from "sonner";
 
 type MilestonesEditorProps = {
   value: Milestone[];
@@ -20,6 +22,17 @@ type MilestonesEditorProps = {
 export function MilestonesEditor({ value, onChange }: MilestonesEditorProps) {
   const total = milestonePercentTotal(value);
   const totalValid = isMilestonePercentTotalValid(value);
+  const totalOverMax = isMilestonePercentTotalOverMax(value);
+
+  const handlePercentChange = (index: number, raw: string) => {
+    const prevTotal = milestonePercentTotal(value);
+    const next = updateMilestonePercent(value, index, raw);
+    onChange(next);
+    const nextTotal = milestonePercentTotal(next);
+    if (prevTotal <= MILESTONE_PERCENT_MAX && nextTotal > MILESTONE_PERCENT_MAX) {
+      toast.error(milestoneTotalOverMaxMessage(nextTotal));
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -50,7 +63,7 @@ export function MilestonesEditor({ value, onChange }: MilestonesEditorProps) {
               type="text"
               inputMode="decimal"
               value={formatMilestonePercentField(item.percent)}
-              onChange={(e) => onChange(updateMilestonePercent(value, i, e.target.value))}
+              onChange={(e) => handlePercentChange(i, e.target.value)}
             />
           </div>
         </div>
@@ -65,7 +78,12 @@ export function MilestonesEditor({ value, onChange }: MilestonesEditorProps) {
           totalValid ? "text-green-600 dark:text-green-500" : "text-destructive",
         )}
       >
-        Total: {total}% — {totalValid ? "ready" : `must equal ${MILESTONE_PERCENT_MAX}%`}
+        Total: {total}%
+        {totalOverMax
+          ? ` — cannot be more than ${MILESTONE_PERCENT_MAX}%`
+          : totalValid
+            ? " — ready"
+            : ` — must equal ${MILESTONE_PERCENT_MAX}%`}
       </p>
     </div>
   );
@@ -73,4 +91,8 @@ export function MilestonesEditor({ value, onChange }: MilestonesEditorProps) {
 
 export function milestoneTotalErrorMessage(): string {
   return `Milestone percentages must add up to exactly ${MILESTONE_PERCENT_MAX}%`;
+}
+
+export function milestoneTotalOverMaxMessage(total: number): string {
+  return `Total cannot be more than ${MILESTONE_PERCENT_MAX}% (currently ${total}%)`;
 }

@@ -26,6 +26,10 @@ export function milestonePercentTotal(milestones: Milestone[]): number {
   return Math.round(total * 100) / 100;
 }
 
+export function isMilestonePercentTotalOverMax(milestones: Milestone[]): boolean {
+  return milestonePercentTotal(milestones) > MILESTONE_PERCENT_MAX;
+}
+
 export function isMilestonePercentTotalValid(milestones: Milestone[]): boolean {
   return milestonePercentTotal(milestones) === MILESTONE_PERCENT_MAX;
 }
@@ -35,12 +39,7 @@ export function updateMilestonePercent(
   index: number,
   raw: string,
 ): Milestone[] {
-  const parsed = parseMilestonePercentText(raw);
-  const othersTotal = milestones.reduce(
-    (sum, m, i) => (i === index ? sum : sum + clampMilestonePercent(m.percent)),
-    0,
-  );
-  const percent = Math.min(parsed, Math.max(0, MILESTONE_PERCENT_MAX - othersTotal));
+  const percent = parseMilestonePercentText(raw);
   return milestones.map((m, i) => (i === index ? { ...m, percent } : m));
 }
 
