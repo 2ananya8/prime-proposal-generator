@@ -32,6 +32,7 @@ import { scopeFieldsToSummaryString, type ScopeField } from "@/lib/scope-fields"
 import { RichTextEditor } from "@/components/RichTextEditor";
 import {
   buildExecutiveSummaryFromTemplate,
+  fallbackExecutiveSummary,
   resolveExecutiveSummary,
   serviceInputFromRecord,
 } from "@/lib/executive-summary-draft";
@@ -195,16 +196,26 @@ function Wizard() {
     }
   };
 
-  const runAiExecutiveSummary = async (preferAi: boolean) => {
+  const runAiExecutiveSummary = async (fromButton: boolean) => {
     if (!selectedService || !executiveSummaryDraftInput) return toast.error("Pick a service first");
     setDraftingSummary(true);
-    if (preferAi) setExecSummaryPreferAi(true);
+    if (fromButton) setExecSummaryPreferAi(true);
     try {
       const r = await runDraftExecutiveSummary(executiveSummaryDraftInput);
       setExecSummaryAi(r.executive_summary);
-      if ("fallback" in r && r.fallback && r.message) toast.message(r.message);
-    } catch (e: any) { toast.error(e.message || "Draft failed"); }
-    finally { setDraftingSummary(false); }
+      if (fromButton) {
+        setExecSummaryUser(r.executive_summary);
+        if (r.fallback && r.message) toast.message(r.message);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Draft failed";
+      if (fromButton) {
+        const local = fallbackExecutiveSummary(executiveSummaryDraftInput);
+        setExecSummaryAi(local);
+        setExecSummaryUser(local);
+        toast.error(`${msg} — a basic draft was added to the editor.`);
+      }
+    } finally { setDraftingSummary(false); }
   };
 
   const draftSummary = () => runAiExecutiveSummary(true);

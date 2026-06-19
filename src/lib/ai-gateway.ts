@@ -6,6 +6,6 @@ export function createAnthropicClient() {
   if (!apiKey) throw new Error("Missing ANTHROPIC_API_KEY in .env");
   return new Anthropic({
     apiKey,
-    dangerouslyAllowBrowser: typeof window !== "undefined",
+    dangerouslyAllowBrowser: true,
   });
 }

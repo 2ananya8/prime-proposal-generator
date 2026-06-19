@@ -210,5 +210,5 @@ export function fallbackExecutiveSummary(input: ExecutiveSummaryDraftInput): str
 }
 
 export function isExecutiveSummaryAiRecoverableError(message: string): boolean {
-  return /credit balance|billing|quota|rate limit|overloaded/i.test(message);
+  return /credit balance|billing|quota|rate.?limit|overloaded|529|too many requests/i.test(message);
 }
