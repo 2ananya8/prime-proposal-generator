@@ -9,6 +9,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: write
 
 concurrency:
   group: pages
@@ -49,8 +50,15 @@ jobs:
           test -f dist/client/404.html
           test -d dist/client/assets
 
+      # Re-running a failed job can leave a stale github-pages artifact on the run.
+      - name: Delete stale Pages artifact (if any)
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: github-pages
+          failOnError: false
+
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: dist/client
 
