@@ -5,19 +5,18 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Push built files to the gh-pages branch (Settings → Pages → Deploy from branch → gh-pages).
 permissions:
-  contents: write
+  contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,9 +49,33 @@ jobs:
           test -f dist/client/404.html
           test -d dist/client/assets
 
-      - name: Deploy to gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: dist/client
-          force_orphan: true
+          path: dist/client
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check GitHub Pages is enabled
+        run: |
+          pages_status=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/pages")
+          echo "GitHub Pages API status: ${pages_status}"
+          if [ "${pages_status}" = "404" ]; then
+            echo "::error::GitHub Pages is not enabled. Open https://github.com/${{ github.repository }}/settings/pages → Build and deployment → Source: GitHub Actions → Save. Then re-run this workflow."
+            exit 1
+          fi
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
