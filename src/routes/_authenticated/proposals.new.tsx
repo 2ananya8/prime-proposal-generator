@@ -402,7 +402,7 @@ function Wizard() {
 
       {step === 7 && (
         <Card><CardHeader><CardTitle className="text-base">Payment Milestones</CardTitle></CardHeader><CardContent>
-          <ObjectListEditor value={milestones as any} onChange={setMilestones as any} fields={[{ key: "label", label: "Milestone" }, { key: "percent", label: "%" }]} template={{ label: "", percent: 0 } as any} />
+          <ObjectListEditor value={milestones as any} onChange={setMilestones as any} fields={[{ key: "label", label: "Milestone" }, { key: "percent", label: "%", positiveNumeric: true }]} template={{ label: "", percent: 0 } as any} />
         </CardContent></Card>
       )}
 

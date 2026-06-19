@@ -1,7 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  filterPositiveNumericText,
+  formatPositiveNumericField,
+  parsePositiveNumericText,
+} from "@/lib/positive-numeric-input";
 import { X, Plus } from "lucide-react";
+
+type ObjectListField<T> = {
+  key: keyof T;
+  label: string;
+  textarea?: boolean;
+  /** Text input that only accepts non-negative numbers (no minus sign). */
+  positiveNumeric?: boolean;
+};
 
 export function StringListEditor({ value, onChange, placeholder = "Add item", multiline = false }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string; multiline?: boolean }) {
   const set = (i: number, v: string) => onChange(value.map((x, j) => (j === i ? v : x)));
@@ -18,8 +31,17 @@ export function StringListEditor({ value, onChange, placeholder = "Add item", mu
   );
 }
 
-export function ObjectListEditor<T extends Record<string, any>>({ value, onChange, fields, template }: { value: T[]; onChange: (v: T[]) => void; fields: { key: keyof T; label: string; textarea?: boolean }[]; template: T }) {
-  const set = (i: number, key: keyof T, v: string) => onChange(value.map((x, j) => (j === i ? { ...x, [key]: v } : x)));
+export function ObjectListEditor<T extends Record<string, any>>({ value, onChange, fields, template }: { value: T[]; onChange: (v: T[]) => void; fields: ObjectListField<T>[]; template: T }) {
+  const set = (i: number, key: keyof T, raw: string, positiveNumeric?: boolean) => {
+    const next = positiveNumeric ? parsePositiveNumericText(filterPositiveNumericText(raw)) : raw;
+    onChange(value.map((x, j) => (j === i ? { ...x, [key]: next } : x)));
+  };
+
+  const fieldValue = (item: T, f: ObjectListField<T>) => {
+    if (f.positiveNumeric) return formatPositiveNumericField(item[f.key]);
+    return String(item[f.key] ?? "");
+  };
+
   return (
     <div className="space-y-3">
       {value.map((item, i) => (
@@ -28,9 +50,16 @@ export function ObjectListEditor<T extends Record<string, any>>({ value, onChang
           {fields.map((f) => (
             <div key={String(f.key)} className="space-y-1">
               <label className="text-xs font-medium">{f.label}</label>
-              {f.textarea
-                ? <Textarea value={(item[f.key] as string) ?? ""} onChange={(e) => set(i, f.key, e.target.value)} />
-                : <Input value={(item[f.key] as string) ?? ""} onChange={(e) => set(i, f.key, e.target.value)} />}
+              {f.textarea ? (
+                <Textarea value={fieldValue(item, f)} onChange={(e) => set(i, f.key, e.target.value, f.positiveNumeric)} />
+              ) : (
+                <Input
+                  type={f.positiveNumeric ? "text" : undefined}
+                  inputMode={f.positiveNumeric ? "decimal" : undefined}
+                  value={fieldValue(item, f)}
+                  onChange={(e) => set(i, f.key, e.target.value, f.positiveNumeric)}
+                />
+              )}
             </div>
           ))}
         </div>

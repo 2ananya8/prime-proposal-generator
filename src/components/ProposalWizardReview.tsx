@@ -452,7 +452,7 @@ export function ProposalWizardReview(props: ProposalWizardReviewProps) {
             <ObjectListEditor
               value={milestones as any}
               onChange={setMilestones as any}
-              fields={[{ key: "label", label: "Milestone" }, { key: "percent", label: "%" }]}
+              fields={[{ key: "label", label: "Milestone" }, { key: "percent", label: "%", positiveNumeric: true }]}
               template={{ label: "", percent: 0 } as any}
             />
           }
