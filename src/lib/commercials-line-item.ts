@@ -18,6 +18,19 @@ const roundMoney = (value: number) => Math.round(value * 100) / 100;
 const roundQty = (value: number) => Math.round(value * 1000) / 1000;
 const isPositive = (value: number) => Number.isFinite(value) && value > 0;
 
+/** Parse and clamp commercial numeric fields — minimum 0, no negatives. */
+export function parseNonNegativeCommercialNumber(value: string): number {
+  if (value === "" || value === "-") return 0;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, n);
+}
+
+function clampNonNegative(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, value);
+}
+
 /** Effective line amount for totals and export. */
 export function lineItemAmount(item: Pick<CommercialLineItem, "qty" | "rate" | "amount">): number {
   if (isPositive(item.amount)) return roundMoney(item.amount);
@@ -31,7 +44,7 @@ export function updateCommercialLineItem(
   field: CommercialLineItemField,
   rawValue: number,
 ): CommercialLineItem {
-  const next = { ...item, [field]: rawValue };
+  const next = { ...item, [field]: clampNonNegative(rawValue) };
   const qty = next.qty;
   const rate = next.rate;
   const amount = next.amount;
@@ -54,10 +67,17 @@ export function updateCommercialLineItem(
 }
 
 export function normalizeCommercialLineItems(items: CommercialLineItem[]): CommercialLineItem[] {
-  return items.map((item) => ({
-    ...item,
-    amount: lineItemAmount(item),
-  }));
+  return items.map((item) => {
+    const qty = clampNonNegative(item.qty);
+    const rate = clampNonNegative(item.rate);
+    const amount = clampNonNegative(item.amount);
+    return {
+      ...item,
+      qty,
+      rate,
+      amount: lineItemAmount({ ...item, qty, rate, amount }),
+    };
+  });
 }
 
 export function commercialsSubtotal(items: CommercialLineItem[]): number {

@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Plus } from "lucide-react";
 import {
   EMPTY_COMMERCIAL_LINE_ITEM,
+  parseNonNegativeCommercialNumber,
   updateCommercialLineItem,
   type CommercialLineItem,
   type CommercialLineItemField,
@@ -19,7 +20,7 @@ export function CommercialsLineItemsEditor({ lineItems, onChange }: CommercialsL
   };
 
   const updateNumeric = (index: number, field: CommercialLineItemField, value: string) => {
-    const parsed = value === "" ? 0 : Number(value);
+    const parsed = parseNonNegativeCommercialNumber(value);
     onChange(
       lineItems.map((item, i) =>
         i === index ? updateCommercialLineItem(item, field, parsed) : item,
@@ -51,6 +52,7 @@ export function CommercialsLineItemsEditor({ lineItems, onChange }: CommercialsL
               <td className="pr-2">
                 <Input
                   type="number"
+                  min={0}
                   value={li.qty}
                   onChange={(e) => updateNumeric(i, "qty", e.target.value)}
                 />
@@ -58,6 +60,7 @@ export function CommercialsLineItemsEditor({ lineItems, onChange }: CommercialsL
               <td className="pr-2">
                 <Input
                   type="number"
+                  min={0}
                   value={li.rate}
                   onChange={(e) => updateNumeric(i, "rate", e.target.value)}
                 />
@@ -65,6 +68,7 @@ export function CommercialsLineItemsEditor({ lineItems, onChange }: CommercialsL
               <td className="pr-2">
                 <Input
                   type="number"
+                  min={0}
                   className="text-right"
                   value={li.amount}
                   onChange={(e) => updateNumeric(i, "amount", e.target.value)}
