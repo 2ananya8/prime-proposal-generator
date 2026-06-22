@@ -1,6 +1,14 @@
 import type { User } from "@supabase/supabase-js";
+import {
+  RESET_LINK_VERIFY_TIMEOUT_MS,
+  beginPasswordRecoveryFlow,
+  bindAuthSessionToPage,
+  isPasswordRecoveryFlow,
+} from "./auth-session-policy";
 
 export const MIN_PASSWORD_LENGTH = 8;
+
+export { RESET_LINK_VERIFY_TIMEOUT_MS };
 
 export function mustChangePassword(user: User | null | undefined): boolean {
   return user?.user_metadata?.must_change_password === true;
@@ -41,28 +49,96 @@ export async function updatePassword(newPassword: string) {
   return data;
 }
 
-/** Parse recovery link (PKCE code or hash tokens) and establish a session. */
+function activateRecoverySession(): true {
+  beginPasswordRecoveryFlow();
+  bindAuthSessionToPage();
+  return true;
+}
+
+/** Parse recovery link (PKCE code, token hash, or hash tokens) and establish a session. */
 export async function establishPasswordRecoverySession(): Promise<boolean> {
   const { supabase } = await import("@/integrations/supabase/client");
 
   const params = new URLSearchParams(window.location.search);
+  const tokenHash = params.get("token_hash");
+  const queryType = params.get("type");
+
+  if (tokenHash && queryType === "recovery") {
+    const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
+    if (error) throw error;
+    return activateRecoverySession();
+  }
+
   const code = params.get("code");
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw error;
-    return true;
+    return activateRecoverySession();
   }
 
-  // Implicit/hash flow fallback (older email templates).
   const hash = window.location.hash.startsWith("#")
     ? new URLSearchParams(window.location.hash.slice(1))
     : null;
   if (hash?.get("access_token") && hash.get("type") === "recovery") {
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
-    return Boolean(data.session);
+    if (data.session) return activateRecoverySession();
   }
 
   const { data } = await supabase.auth.getSession();
-  return Boolean(data.session);
+  if (data.session && isPasswordRecoveryFlow()) return true;
+  return false;
+}
+
+/** Wait up to `timeoutMs` for a recovery session from the email link. */
+export async function waitForPasswordRecoverySession(
+  timeoutMs = RESET_LINK_VERIFY_TIMEOUT_MS,
+): Promise<boolean> {
+  const { supabase } = await import("@/integrations/supabase/client");
+
+  try {
+    if (await establishPasswordRecoverySession()) return true;
+  } catch {
+    // URL may still be processing — keep polling below.
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    let intervalId = 0;
+    let timerId = 0;
+    let subscription: { unsubscribe: () => void } | undefined;
+
+    const finish = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      subscription?.unsubscribe();
+      if (intervalId) window.clearInterval(intervalId);
+      if (timerId) window.clearTimeout(timerId);
+      resolve(ok);
+    };
+
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" && session) {
+        activateRecoverySession();
+        finish(true);
+      }
+    });
+    subscription = data.subscription;
+
+    const poll = async () => {
+      if (settled) return;
+      try {
+        if (await establishPasswordRecoverySession()) {
+          finish(true);
+        }
+      } catch {
+        // keep polling until timeout
+      }
+    };
+
+    void poll();
+    intervalId = window.setInterval(() => void poll(), 500);
+    timerId = window.setTimeout(() => finish(false), timeoutMs);
+  });
 }

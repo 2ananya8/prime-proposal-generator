@@ -3,6 +3,10 @@ export const AUTH_SESSION_MAX_MS = 12 * 60 * 60 * 1000;
 
 const PAGE_ID_KEY = "prime_auth_page_id";
 const STARTED_AT_KEY = "prime_auth_started_at";
+const RECOVERY_FLOW_KEY = "prime_auth_recovery_flow";
+
+/** How long the reset-password page waits for the email link to verify. */
+export const RESET_LINK_VERIFY_TIMEOUT_MS = 60_000;
 
 /** Unique per full page load (refresh generates a new id). */
 export const PAGE_INSTANCE_ID =
@@ -27,6 +31,27 @@ export function clearAuthSessionMeta() {
   if (!storage) return;
   storage.removeItem(PAGE_ID_KEY);
   storage.removeItem(STARTED_AT_KEY);
+  storage.removeItem(RECOVERY_FLOW_KEY);
+}
+
+/** Active while completing a password reset from an email link. */
+export function beginPasswordRecoveryFlow() {
+  const storage = ss();
+  if (!storage) return;
+  storage.setItem(RECOVERY_FLOW_KEY, "1");
+}
+
+export function endPasswordRecoveryFlow() {
+  ss()?.removeItem(RECOVERY_FLOW_KEY);
+}
+
+export function isPasswordRecoveryFlow(): boolean {
+  return ss()?.getItem(RECOVERY_FLOW_KEY) === "1";
+}
+
+export function isPasswordResetPath(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.location.pathname.endsWith("/auth/reset-password");
 }
 
 function sessionStartedAt(): number | null {
@@ -54,6 +79,8 @@ export type AuthSessionPolicyFailure =
 /** Returns null when the session may continue, otherwise why it must end. */
 export function getAuthSessionPolicyFailure(hasSession: boolean): AuthSessionPolicyFailure | null {
   if (!hasSession) return null;
+  // Recovery sessions from email links are not bound until we activate them on the reset page.
+  if (isPasswordRecoveryFlow() || isPasswordResetPath()) return null;
   if (!isBoundToCurrentPage()) return "refresh";
   if (!isWithinMaxDuration()) return "expired";
   return null;

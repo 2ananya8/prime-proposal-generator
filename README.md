@@ -80,6 +80,8 @@ Set `SUPABASE_SERVICE_ROLE_KEY` in **Supabase Dashboard → Edge Functions → S
 
 Supabase must have **email delivery** configured (built-in or custom SMTP) for reset links to arrive.
 
+In **Authentication → Providers → Email**, set **OTP expiry** to at least **60 seconds** (3600 recommended) so reset links stay valid long enough to open.
+
 ### Roles
 
 | Role | Capabilities |

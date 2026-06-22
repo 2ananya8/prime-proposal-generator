@@ -10,6 +10,8 @@ import {
 import type { Session, User } from "@supabase/supabase-js";
 import { authRequired, fetchProfile, signOut as authSignOut, type AppProfile } from "./auth-session";
 import {
+  beginPasswordRecoveryFlow,
+  bindAuthSessionToPage,
   clearLegacyPersistedAuth,
   getAuthSessionPolicyFailure,
   msUntilAuthExpiry,
@@ -109,6 +111,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { supabase } = await import("@/integrations/supabase/client");
       const { data } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
         if (!mounted) return;
+        if (event === "PASSWORD_RECOVERY" && nextSession) {
+          beginPasswordRecoveryFlow();
+          bindAuthSessionToPage();
+        }
         if (event === "SIGNED_IN" && nextSession) {
           scheduleExpiryCheck();
         }

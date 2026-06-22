@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NewPasswordForm } from "@/components/NewPasswordForm";
 import { authRequired } from "@/lib/auth-session";
 import {
-  establishPasswordRecoverySession,
+  RESET_LINK_VERIFY_TIMEOUT_MS,
   updatePassword,
   validatePasswordPair,
+  waitForPasswordRecoverySession,
 } from "@/lib/auth-password";
 import { publicAsset } from "@/lib/public-asset";
 import { PRIME_LOGO_ALT } from "@/lib/proposal-header-footer.constants";
@@ -24,48 +25,24 @@ function ResetPasswordPage() {
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
   const [invalid, setInvalid] = useState(false);
-  const readyRef = useRef(false);
 
   useEffect(() => {
     if (!authRequired()) return;
 
     let mounted = true;
-    let subscription: { unsubscribe: () => void } | undefined;
 
-    const markReady = () => {
-      readyRef.current = true;
-      setReady(true);
-      setInvalid(false);
-    };
-
-    (async () => {
-      try {
-        const { supabase } = await import("@/integrations/supabase/client");
-        const { data } = supabase.auth.onAuthStateChange((event) => {
-          if (!mounted) return;
-          if (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") {
-            markReady();
-          }
-        });
-        subscription = data.subscription;
-
-        const hasSession = await establishPasswordRecoverySession();
-        if (mounted && hasSession) {
-          markReady();
-          return;
-        }
-
-        window.setTimeout(() => {
-          if (mounted && !readyRef.current) setInvalid(true);
-        }, 4000);
-      } catch {
-        if (mounted) setInvalid(true);
+    void waitForPasswordRecoverySession(RESET_LINK_VERIFY_TIMEOUT_MS).then((ok) => {
+      if (!mounted) return;
+      if (ok) {
+        setReady(true);
+        setInvalid(false);
+      } else {
+        setInvalid(true);
       }
-    })();
+    });
 
     return () => {
       mounted = false;
-      subscription?.unsubscribe();
     };
   }, []);
 
@@ -92,6 +69,8 @@ function ResetPasswordPage() {
 
   if (!authRequired()) return null;
 
+  const verifySeconds = RESET_LINK_VERIFY_TIMEOUT_MS / 1000;
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
@@ -108,7 +87,7 @@ function ResetPasswordPage() {
                 ? "This reset link is invalid or has expired. Request a new one below."
                 : ready
                   ? "Enter and confirm your new password."
-                  : "Verifying your reset link…"}
+                  : `Verifying your reset link… (up to ${verifySeconds}s)`}
             </CardDescription>
           </div>
         </CardHeader>
