@@ -32,7 +32,7 @@ function NewService() {
     <div className="max-w-3xl space-y-4">
       <Link to="/services" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:underline"><ArrowLeft className="h-4 w-4" />Back</Link>
       <h1 className="text-2xl font-semibold">New service</h1>
-      <ServiceForm value={v} onChange={setV} hideDefaultTimelinePhases />
+      <ServiceForm value={v} onChange={setV} />
       <div className="flex gap-2 sticky bottom-0 bg-background py-3 border-t"><Button disabled={busy} onClick={save}>{busy ? "Saving…" : "Save service"}</Button></div>
     </div>
   );
