@@ -11,7 +11,7 @@ import {
   type ProposalTermsItem,
 } from "@/lib/wapt-template-sections";
 import { ProposalRichText } from "@/components/ProposalRichText";
-import { plainTextField, looksLikeHtml } from "@/lib/html-content";
+import { plainTextField } from "@/lib/html-content";
 import {
   getProposalSectionContent,
   customSectionTitle,
@@ -61,14 +61,21 @@ function TermsBullets({ items }: { items: ProposalTermsItem[] }) {
   );
 }
 
+import {
+  PROPOSAL_TABLE_BODY_CELL_CLASS,
+  PROPOSAL_TABLE_CLASS,
+  PROPOSAL_TABLE_HEADER_CELL_CLASS,
+  PROPOSAL_TABLE_WRAPPER_CLASS,
+} from "@/lib/rich-html-table";
+
 function DataTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="overflow-x-auto rounded border border-gray-300">
-      <table className="w-full text-[13px] border-collapse">
+    <div className={PROPOSAL_TABLE_WRAPPER_CLASS}>
+      <table className={PROPOSAL_TABLE_CLASS}>
         <thead>
-          <tr style={{ backgroundColor: ACCENT }}>
+          <tr>
             {headers.map((h) => (
-              <th key={h} className="text-left font-semibold px-3 py-2 border border-gray-300">{h}</th>
+              <th key={h} className={PROPOSAL_TABLE_HEADER_CELL_CLASS}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -76,7 +83,7 @@ function DataTable({ headers, rows }: { headers: string[]; rows: string[][] }) {
           {rows.map((row, i) => (
             <tr key={i} className={i % 2 === 1 ? "bg-gray-50" : undefined}>
               {row.map((cell, j) => (
-                <td key={j} className="px-3 py-2 border border-gray-300 align-top">{cell || "—"}</td>
+                <td key={j} className={PROPOSAL_TABLE_BODY_CELL_CLASS}>{cell || "—"}</td>
               ))}
             </tr>
           ))}
@@ -90,15 +97,7 @@ const APPROACH_INTRO =
   "Prime Infoserv follows the OWASP Testing Guide v4.2 as the primary framework, covering all OWASP TOP 10 (2021) categories as a minimum, with additional testing for business logic and application-specific attack vectors.";
 
 function CustomSectionBody({ content }: { content: string }) {
-  if (looksLikeHtml(content)) {
-    return (
-      <div
-        className="[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2"
-        dangerouslySetInnerHTML={{ __html: content }}
-      />
-    );
-  }
-  return <p className="whitespace-pre-wrap">{plainTextField(content)}</p>;
+  return <ProposalRichText content={content} />;
 }
 
 export function ProposalPreview({ data }: { data: ProposalPreviewData }) {
@@ -181,12 +180,7 @@ export function ProposalPreview({ data }: { data: ProposalPreviewData }) {
         )) : null}
 
         {content.prerequisitesHtml ? next("Prerequisites", (
-          <Body>
-            <div
-              className="[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2"
-              dangerouslySetInnerHTML={{ __html: content.prerequisitesHtml }}
-            />
-          </Body>
+          <Body><ProposalRichText content={content.prerequisitesHtml} /></Body>
         )) : null}
 
         {content.customSections.map((sec) => next(customSectionTitle(sec.title), (
@@ -197,7 +191,7 @@ export function ProposalPreview({ data }: { data: ProposalPreviewData }) {
           <div className="space-y-3">
             <CommercialsTable commercials={commercials} />
             {content.commercialsNotes ? (
-              <p className="text-[13px] text-gray-600 whitespace-pre-wrap">{content.commercialsNotes}</p>
+              <ProposalRichText content={content.commercialsNotes} className="text-[13px] text-gray-600" />
             ) : null}
           </div>
         ))}

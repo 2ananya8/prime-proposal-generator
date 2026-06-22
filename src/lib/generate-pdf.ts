@@ -14,6 +14,7 @@ import {
 } from "./proposal-header-footer-pdf";
 import { PROPOSAL_TERMS_AND_CONDITIONS_ITEMS } from "./wapt-template-sections";
 import { plainTextField, decodeHtmlEntities, looksLikeHtml } from "./html-content";
+import { parseHtmlTableInner, splitRichHtmlBlocks } from "./rich-html-table";
 import {
   buildCommercialsTableRows,
   COMMERCIALS_TABLE_HEADERS,
@@ -28,6 +29,8 @@ const BRAND = rgb(0.12, 0.31, 0.47);
 const ACCENT = rgb(0.84, 0.91, 0.94);
 const TEXT = rgb(0.15, 0.15, 0.15);
 const MUTED = rgb(0.45, 0.45, 0.45);
+const TABLE_LINE = rgb(0.35, 0.35, 0.35);
+const TABLE_LINE_WIDTH = 1;
 
 type Ctx = {
   pdf: PDFDocument;
@@ -187,44 +190,47 @@ function drawRichText(ctx: Ctx, text: string) {
     return;
   }
 
-  const blockRe = /<(p|ul|ol|h[1-6])[^>]*>([\s\S]*?)<\/\1>/gi;
-  let matched = false;
+  const blocks = splitRichHtmlBlocks(text);
+  if (blocks.length) {
+    for (const { tag, inner } of blocks) {
+      if (tag === "table") {
+        const parsed = parseHtmlTableInner(inner);
+        if (parsed.headers.length || parsed.rows.length) {
+          table(ctx, parsed.headers, parsed.rows);
+        }
+        continue;
+      }
 
-  for (const match of text.matchAll(blockRe)) {
-    matched = true;
-    const tag = match[1].toLowerCase();
-    const inner = match[2];
+      if (tag === "ul" || tag === "ol") {
+        const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+        const items = [...inner.matchAll(liRe)];
+        items.forEach((liMatch, i) => {
+          const liInner = liMatch[1] ?? "";
+          const segs = htmlToInlineSegments(liInner);
+          const tokensBase = tokenizeForWrap(segs);
+          if (!tokensBase.length) return;
 
-    if (tag === "ul" || tag === "ol") {
-      const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-      const items = [...inner.matchAll(liRe)];
-      items.forEach((liMatch, i) => {
-        const liInner = liMatch[1] ?? "";
-        const segs = htmlToInlineSegments(liInner);
-        const tokensBase = tokenizeForWrap(segs);
-        if (!tokensBase.length) return;
+          const prefixToken = tag === "ol" ? [{ text: `${i + 1}. `, bold: false }] : [];
+          const tokens = [...prefixToken, ...tokensBase];
 
-        const prefixToken = tag === "ol" ? [{ text: `${i + 1}. `, bold: false }] : [];
-        const tokens = [...prefixToken, ...tokensBase];
+          ensure(ctx, 14);
+          ctx.page.drawText("*", { x: MARGIN, y: ctx.y - 10, size: 10, font: ctx.bold, color: BRAND });
+          drawTokens(ctx, tokens, { x: MARGIN + 14, indent: 14, size: 10, gapAfter: 2, color: TEXT });
+        });
+        continue;
+      }
 
-        ensure(ctx, 14);
-        ctx.page.drawText("*", { x: MARGIN, y: ctx.y - 10, size: 10, font: ctx.bold, color: BRAND });
-        drawTokens(ctx, tokens, { x: MARGIN + 14, indent: 14, size: 10, gapAfter: 2, color: TEXT });
-      });
-      continue;
+      const segs = htmlToInlineSegments(inner);
+      const tokens = tokenizeForWrap(segs);
+      if (!tokens.length) continue;
+      drawTokens(ctx, tokens, { x: MARGIN, indent: 0, size: 10, gapAfter: 2, color: TEXT });
     }
-
-    const segs = htmlToInlineSegments(inner);
-    const tokens = tokenizeForWrap(segs);
-    if (!tokens.length) continue;
-    drawTokens(ctx, tokens, { x: MARGIN, indent: 0, size: 10, gapAfter: 2, color: TEXT });
+    return;
   }
 
-  if (!matched) {
-    const segs = htmlToInlineSegments(text);
-    const tokens = tokenizeForWrap(segs);
-    if (tokens.length) drawTokens(ctx, tokens, { x: MARGIN, indent: 0, size: 10, gapAfter: 2, color: TEXT });
-  }
+  const segs = htmlToInlineSegments(text);
+  const tokens = tokenizeForWrap(segs);
+  if (tokens.length) drawTokens(ctx, tokens, { x: MARGIN, indent: 0, size: 10, gapAfter: 2, color: TEXT });
 }
 
 function drawText(ctx: Ctx, text: string, opts: { font?: PDFFont; size?: number; color?: any; indent?: number; gap?: number } = {}) {
@@ -329,12 +335,12 @@ function table(ctx: Ctx, headers: string[], rows: string[][]) {
       });
     });
     for (let i = 0; i <= cols; i++) {
-      ctx.page.drawLine({ start: { x: MARGIN + i * colW, y: ctx.y }, end: { x: MARGIN + i * colW, y: ctx.y - rowH }, thickness: 0.3, color: rgb(0.75, 0.75, 0.75) });
+      ctx.page.drawLine({ start: { x: MARGIN + i * colW, y: ctx.y }, end: { x: MARGIN + i * colW, y: ctx.y - rowH }, thickness: TABLE_LINE_WIDTH, color: TABLE_LINE });
     }
-    ctx.page.drawLine({ start: { x: MARGIN, y: ctx.y - rowH }, end: { x: PAGE_W - MARGIN, y: ctx.y - rowH }, thickness: 0.3, color: rgb(0.75, 0.75, 0.75) });
+    ctx.page.drawLine({ start: { x: MARGIN, y: ctx.y - rowH }, end: { x: PAGE_W - MARGIN, y: ctx.y - rowH }, thickness: TABLE_LINE_WIDTH, color: TABLE_LINE });
     ctx.y -= rowH;
   };
-  ctx.page.drawLine({ start: { x: MARGIN, y: ctx.y }, end: { x: PAGE_W - MARGIN, y: ctx.y }, thickness: 0.3, color: rgb(0.75, 0.75, 0.75) });
+  ctx.page.drawLine({ start: { x: MARGIN, y: ctx.y }, end: { x: PAGE_W - MARGIN, y: ctx.y }, thickness: TABLE_LINE_WIDTH, color: TABLE_LINE });
   drawRow(headers, true);
   rows.forEach((r) => drawRow(r, false));
   ctx.y -= 8;
@@ -368,15 +374,15 @@ function drawCommercialsTable(ctx: Ctx, commercials: ProposalPreviewData["commer
       ctx.page.drawLine({
         start: { x: MARGIN + i * colW, y: ctx.y },
         end: { x: MARGIN + i * colW, y: ctx.y - rowH },
-        thickness: 0.3,
-        color: rgb(0.75, 0.75, 0.75),
+        thickness: TABLE_LINE_WIDTH,
+        color: TABLE_LINE,
       });
     }
     ctx.page.drawLine({
       start: { x: MARGIN, y: ctx.y - rowH },
       end: { x: PAGE_W - MARGIN, y: ctx.y - rowH },
-      thickness: 0.3,
-      color: rgb(0.75, 0.75, 0.75),
+      thickness: TABLE_LINE_WIDTH,
+      color: TABLE_LINE,
     });
     ctx.y -= rowH;
   };
@@ -412,15 +418,15 @@ function drawCommercialsTable(ctx: Ctx, commercials: ProposalPreviewData["commer
       ctx.page.drawLine({
         start: { x, y: ctx.y },
         end: { x, y: ctx.y - rowH },
-        thickness: 0.3,
-        color: rgb(0.75, 0.75, 0.75),
+        thickness: TABLE_LINE_WIDTH,
+        color: TABLE_LINE,
       });
     }
     ctx.page.drawLine({
       start: { x: MARGIN, y: ctx.y - rowH },
       end: { x: PAGE_W - MARGIN, y: ctx.y - rowH },
-      thickness: 0.3,
-      color: rgb(0.75, 0.75, 0.75),
+      thickness: TABLE_LINE_WIDTH,
+      color: TABLE_LINE,
     });
     ctx.y -= rowH;
   };
@@ -428,8 +434,8 @@ function drawCommercialsTable(ctx: Ctx, commercials: ProposalPreviewData["commer
   ctx.page.drawLine({
     start: { x: MARGIN, y: ctx.y },
     end: { x: PAGE_W - MARGIN, y: ctx.y },
-    thickness: 0.3,
-    color: rgb(0.75, 0.75, 0.75),
+    thickness: TABLE_LINE_WIDTH,
+    color: TABLE_LINE,
   });
   drawCellsRow(headers, true);
 

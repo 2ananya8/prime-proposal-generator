@@ -3,7 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { ProposalRichText } from "@/components/ProposalRichText";
 import { toast } from "sonner";
 import { ArrowLeft, Eye, Loader2, Sparkles, Trash2 } from "lucide-react";
 import { lineItemAmount } from "@/lib/commercials-line-item";
@@ -157,9 +158,11 @@ function ProposalDetail() {
 
       <Card><CardHeader className="flex flex-row justify-between items-center"><CardTitle className="text-base">Executive Summary</CardTitle>{!editingSummary && <Button size="sm" variant="ghost" onClick={() => setEditingSummary(true)}>Edit</Button>}</CardHeader><CardContent>
         {editingSummary ? <>
-          <Textarea className="min-h-[200px]" value={summary} onChange={(e) => setSummary(e.target.value)} />
+          <RichTextEditor className="min-h-[200px]" value={summary} onChange={setSummary} />
           <div className="flex gap-2 mt-2"><Button size="sm" onClick={saveSummary}>Save</Button><Button size="sm" variant="ghost" onClick={() => { setEditingSummary(false); setSummary(p.executive_summary ?? ""); }}>Cancel</Button></div>
-        </> : <p className="text-sm whitespace-pre-wrap">{p.executive_summary || "—"}</p>}
+        </> : (p.executive_summary?.trim()
+          ? <ProposalRichText content={p.executive_summary} className="text-sm" />
+          : <p className="text-sm text-muted-foreground">—</p>)}
       </CardContent></Card>
 
       {commercials && (

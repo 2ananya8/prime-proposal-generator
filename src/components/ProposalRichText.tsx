@@ -1,7 +1,8 @@
 import { looksLikeHtml, plainTextField } from "@/lib/html-content";
+import { RICH_TEXT_TABLE_CLASS } from "@/lib/rich-html-table";
 
 const richTextClassName =
-  "[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2 [&_li]:my-0.5";
+  `[&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_p+p]:mt-2 [&_li]:my-0.5 ${RICH_TEXT_TABLE_CLASS}`;
 
 export function ProposalRichText({
   content,

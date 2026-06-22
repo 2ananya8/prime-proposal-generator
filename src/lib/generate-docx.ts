@@ -11,6 +11,7 @@ import { buildDocxCoverPage } from "./cover-page-docx";
 import { buildDocxEndingPage } from "./ending-page-docx";
 import { PROPOSAL_TERMS_AND_CONDITIONS_ITEMS } from "./wapt-template-sections";
 import { plainTextField, decodeHtmlEntities } from "./html-content";
+import { parseHtmlTableInner, splitRichHtmlBlocks } from "./rich-html-table";
 import { getProposalSectionContent, hasCoverageMatrix, hasFilledMilestones, customSectionTitle, hasFilledText } from "./proposal-section-visibility";
 import {
   buildCommercialsTableRows,
@@ -21,6 +22,15 @@ import { PROPOSAL_FONT_NAME } from "./proposal-fonts.constants";
 
 const BRAND = "1F4E79";
 const ACCENT = "D5E8F0";
+const TABLE_BORDER = { style: BorderStyle.SINGLE, size: 8, color: "666666" };
+const TABLE_BORDER_SET = {
+  top: TABLE_BORDER,
+  bottom: TABLE_BORDER,
+  left: TABLE_BORDER,
+  right: TABLE_BORDER,
+  insideHorizontal: TABLE_BORDER,
+  insideVertical: TABLE_BORDER,
+};
 
 const p = (text: string, opts: { bold?: boolean; size?: number; color?: string; align?: any; preserve?: boolean } = {}) =>
   new Paragraph({
@@ -93,62 +103,61 @@ function inlineSegmentsToRuns(segs: InlineSeg[], fontSize = 22) {
   return segs.map((seg) => new TextRun({ text: seg.text, bold: seg.bold, font: PROPOSAL_FONT_NAME, size: fontSize }));
 }
 
-function richHtmlToDocxParagraphs(html: string): Paragraph[] {
+function richHtmlBlockToDocx(tag: string, inner: string): (Paragraph | Table)[] {
+  if (tag === "table") {
+    const parsed = parseHtmlTableInner(inner);
+    if (!parsed.headers.length && !parsed.rows.length) return [];
+    return [buildTable(parsed.headers, parsed.rows)];
+  }
+
+  if (tag === "ul" || tag === "ol") {
+    const blocks: Paragraph[] = [];
+    const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+    const items = [...inner.matchAll(liRe)];
+    items.forEach((liMatch, i) => {
+      const liInner = liMatch[1] ?? "";
+      const segs = htmlToInlineSegments(liInner);
+      if (!segs.length) return;
+      const children =
+        tag === "ol"
+          ? [
+            new TextRun({ text: `${i + 1}. `, bold: false, font: PROPOSAL_FONT_NAME, size: 22 }),
+            ...inlineSegmentsToRuns(segs, 22),
+          ]
+          : inlineSegmentsToRuns(segs, 22);
+
+      blocks.push(
+        new Paragraph({
+          numbering: { reference: "bullets", level: 0 },
+          children,
+          spacing: { after: 80 },
+        }),
+      );
+    });
+    return blocks;
+  }
+
+  const segs = htmlToInlineSegments(inner);
+  if (!segs.length) return [];
+  return [
+    new Paragraph({
+      children: inlineSegmentsToRuns(segs, 22),
+      spacing: { after: 120 },
+    }),
+  ];
+}
+
+function richHtmlToDocxParagraphs(html: string): (Paragraph | Table)[] {
   if (!html?.trim()) return [];
 
-  const blocks: Paragraph[] = [];
-  const blockRe = /<(p|ul|ol|h[1-6])[^>]*>([\s\S]*?)<\/\1>/gi;
-  let matched = false;
-
-  for (const match of html.matchAll(blockRe)) {
-    matched = true;
-    const tag = match[1].toLowerCase();
-    const inner = match[2];
-
-    if (tag === "ul" || tag === "ol") {
-      const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-      const items = [...inner.matchAll(liRe)];
-      items.forEach((liMatch, i) => {
-        const liInner = liMatch[1] ?? "";
-        const segs = htmlToInlineSegments(liInner);
-        if (!segs.length) return;
-        const children =
-          tag === "ol"
-            ? [
-              new TextRun({ text: `${i + 1}. `, bold: false, font: PROPOSAL_FONT_NAME, size: 22 }),
-              ...inlineSegmentsToRuns(segs, 22),
-            ]
-            : inlineSegmentsToRuns(segs, 22);
-
-        blocks.push(
-          new Paragraph({
-            numbering: { reference: "bullets", level: 0 },
-            children,
-            spacing: { after: 80 },
-          }),
-        );
-      });
-      continue;
-    }
-
-    // <p> or <h#> -> paragraph
-    const segs = htmlToInlineSegments(inner);
-    if (!segs.length) continue;
-    blocks.push(
-      new Paragraph({
-        children: inlineSegmentsToRuns(segs, 22),
-        spacing: { after: 120 },
-      }),
-    );
+  const blocks = splitRichHtmlBlocks(html);
+  if (blocks.length) {
+    return blocks.flatMap(({ tag, inner }) => richHtmlBlockToDocx(tag, inner));
   }
 
-  if (!matched) {
-    const segs = htmlToInlineSegments(html);
-    if (!segs.length) return [];
-    return [new Paragraph({ children: inlineSegmentsToRuns(segs, 22), spacing: { after: 120 } })];
-  }
-
-  return blocks;
+  const segs = htmlToInlineSegments(html);
+  if (!segs.length) return [];
+  return [new Paragraph({ children: inlineSegmentsToRuns(segs, 22), spacing: { after: 120 } })];
 }
 
 const richTextBlocks = (text: string) => richHtmlToDocxParagraphs(text);
@@ -173,10 +182,9 @@ const labeledBullet = (label: string | undefined, text: string) =>
   });
 
 const cell = (text: string, opts: { bold?: boolean; shade?: boolean; width?: number; align?: (typeof AlignmentType)[keyof typeof AlignmentType] } = {}) => {
-  const border = { style: BorderStyle.SINGLE, size: 4, color: "BFBFBF" };
   return new TableCell({
     width: opts.width ? { size: opts.width, type: WidthType.DXA } : undefined,
-    borders: { top: border, bottom: border, left: border, right: border },
+    borders: TABLE_BORDER_SET,
     shading: opts.shade ? { fill: ACCENT, type: ShadingType.CLEAR, color: "auto" } : undefined,
     margins: { top: 80, bottom: 80, left: 120, right: 120 },
     children: [new Paragraph({
@@ -203,13 +211,12 @@ function buildCommercialsTable(commercials: ProposalPreviewData["commercials"], 
         ],
       });
     }
-    const border = { style: BorderStyle.SINGLE, size: 4, color: "BFBFBF" };
     return new TableRow({
       children: [
         new TableCell({
           columnSpan: 3,
           width: { size: colW * 3, type: WidthType.DXA },
-          borders: { top: border, bottom: border, left: border, right: border },
+          borders: TABLE_BORDER_SET,
           margins: { top: 80, bottom: 80, left: 120, right: 120 },
           children: [new Paragraph({
             children: [new TextRun({ text: row.label, bold: row.bold, font: PROPOSAL_FONT_NAME, size: 20 })],
@@ -223,6 +230,7 @@ function buildCommercialsTable(commercials: ProposalPreviewData["commercials"], 
   return new Table({
     width: { size: totalWidth, type: WidthType.DXA },
     columnWidths: widths,
+    borders: TABLE_BORDER_SET,
     rows: [
       new TableRow({
         tableHeader: true,
@@ -239,6 +247,7 @@ function buildTable(headers: string[], rows: string[][], totalWidth = 9360) {
   return new Table({
     width: { size: totalWidth, type: WidthType.DXA },
     columnWidths: widths,
+    borders: TABLE_BORDER_SET,
     rows: [
       new TableRow({ tableHeader: true, children: headers.map((hd, i) => cell(hd, { bold: true, shade: true, width: widths[i] })) }),
       ...rows.map((r) => new TableRow({ children: r.map((c, i) => cell(c ?? "", { width: widths[i] })) })),

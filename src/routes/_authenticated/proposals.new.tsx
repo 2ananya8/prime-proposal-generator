@@ -5,7 +5,6 @@ import { createProposal, createService, listServicesFull } from "@/lib/data-api"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -29,7 +28,7 @@ import {
 } from "@/lib/commercials-line-item";
 import { buildWizardPreviewData, type ProposalContentOverrides } from "@/lib/proposal-preview";
 import { isMilestonePercentTotalValid } from "@/lib/milestones";
-import { plainTextField } from "@/lib/html-content";
+import { plainTextField, htmlToPlainText, looksLikeHtml } from "@/lib/html-content";
 import { scopeFieldsToSummaryString, type ScopeField } from "@/lib/scope-fields";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import {
@@ -107,7 +106,8 @@ function Wizard() {
   );
 
   const setExecSummaryFromUser = (value: string) => {
-    setExecSummaryUser(value.trim() ? value : null);
+    const blank = !value.trim() || (looksLikeHtml(value) && !htmlToPlainText(value).trim());
+    setExecSummaryUser(blank ? null : value);
   };
 
   const execSummaryFieldValue = execSummaryUser ?? "";
@@ -384,10 +384,10 @@ function Wizard() {
             <p className="text-xs text-muted-foreground">
               Type to override. {execSummaryBlankHint}
             </p>
-            <Textarea
+            <RichTextEditor
               className="min-h-[260px]"
               value={execSummaryFieldValue}
-              onChange={(e) => setExecSummaryFromUser(e.target.value)}
+              onChange={setExecSummaryFromUser}
               placeholder="Optional — leave blank to use the service template or AI draft"
             />
           </CardContent></Card>
@@ -404,7 +404,7 @@ function Wizard() {
           <CommercialsLineItemsEditor lineItems={lineItems} onChange={setLineItems} />
           <div className="flex items-center gap-3"><Label>GST %</Label><Input className="w-24" type="number" value={gst} onChange={(e) => setGst(Number(e.target.value))} /></div>
           <div className="text-sm space-y-1 border-t pt-2"><div className="flex justify-between"><span>Subtotal</span><span>₹ {subtotal.toLocaleString("en-IN")}</span></div><div className="flex justify-between"><span>GST</span><span>₹ {gstAmount.toLocaleString("en-IN")}</span></div><div className="flex justify-between font-semibold"><span>Total</span><span>₹ {total.toLocaleString("en-IN")}</span></div></div>
-          <div className="space-y-1"><Label>Notes</Label><Textarea value={commNotes} onChange={(e) => setCommNotes(e.target.value)} /></div>
+          <div className="space-y-1"><Label>Notes</Label><RichTextEditor value={commNotes} onChange={setCommNotes} placeholder="Optional notes for commercials" /></div>
         </CardContent></Card>
       )}
 
@@ -417,7 +417,7 @@ function Wizard() {
       {step === 8 && (
         <Card><CardHeader><CardTitle className="text-base">Extras (optional)</CardTitle></CardHeader><CardContent>
           <p className="text-xs text-muted-foreground mb-3">Add any additional custom sections to include in the proposal.</p>
-          <ObjectListEditor value={extras} onChange={setExtras} fields={[{ key: "title", label: "Section Title" }, { key: "content", label: "Content", textarea: true }]} template={{ title: "", content: "" }} />
+          <ObjectListEditor value={extras} onChange={setExtras} fields={[{ key: "title", label: "Section Title" }, { key: "content", label: "Content", richText: true }]} template={{ title: "", content: "" }} />
         </CardContent></Card>
       )}
 

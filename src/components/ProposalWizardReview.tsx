@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pencil } from "lucide-react";
 import { expandListField, plainTextField, looksLikeHtml } from "@/lib/html-content";
@@ -39,7 +38,12 @@ import { CommercialsLineItemsEditor } from "@/components/CommercialsLineItemsEdi
 import type { CommercialLineItem } from "@/lib/commercials-line-item";
 
 const BRAND = "#1F4E79";
-const ACCENT = "#D5E8F0";
+import {
+  PROPOSAL_TABLE_BODY_CELL_CLASS,
+  PROPOSAL_TABLE_CLASS,
+  PROPOSAL_TABLE_HEADER_CELL_CLASS,
+  PROPOSAL_TABLE_WRAPPER_CLASS,
+} from "@/lib/rich-html-table";
 
 function DocSection({
   n,
@@ -86,12 +90,12 @@ function BulletPreview({ items }: { items: string[] }) {
 
 function TablePreview({ headers, rows }: { headers: string[]; rows: string[][] }) {
   return (
-    <div className="overflow-x-auto rounded border border-gray-300">
-      <table className="w-full text-sm border-collapse">
+    <div className={PROPOSAL_TABLE_WRAPPER_CLASS}>
+      <table className={PROPOSAL_TABLE_CLASS}>
         <thead>
-          <tr style={{ backgroundColor: ACCENT }}>
+          <tr>
             {headers.map((h) => (
-              <th key={h} className="text-left font-semibold px-3 py-2 border border-gray-300">{h}</th>
+              <th key={h} className={PROPOSAL_TABLE_HEADER_CELL_CLASS}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -99,7 +103,7 @@ function TablePreview({ headers, rows }: { headers: string[]; rows: string[][] }
           {rows.map((row, i) => (
             <tr key={i}>
               {row.map((cell, j) => (
-                <td key={j} className="px-3 py-2 border border-gray-300 align-top">{cell || "—"}</td>
+                <td key={j} className={PROPOSAL_TABLE_BODY_CELL_CLASS}>{cell || "—"}</td>
               ))}
             </tr>
           ))}
@@ -244,7 +248,7 @@ export function ProposalWizardReview(props: ProposalWizardReviewProps) {
         editor={
           <div className="space-y-1">
             <Label>Executive Summary</Label>
-            <Textarea className="min-h-[220px]" value={execSummary} onChange={(e) => setExecSummary(e.target.value)} />
+            <RichTextEditor className="min-h-[220px]" value={execSummary} onChange={setExecSummary} />
           </div>
         }
       />
@@ -301,14 +305,17 @@ export function ProposalWizardReview(props: ProposalWizardReviewProps) {
         <DocSection
           n={nextNum()}
           title="Scope of Engagement"
-          preview={<p className="whitespace-pre-wrap">{plainTextField(scopeEngagementText) || "—"}</p>}
+          preview={
+            scopeEngagementText.trim()
+              ? <ProposalRichText content={scopeEngagementText} className="text-sm leading-relaxed" />
+              : <p className="text-muted-foreground">—</p>
+          }
           editor={
             <div className="space-y-1">
               <Label>Scope of Engagement</Label>
-              <Textarea
-                className="min-h-[140px]"
+              <RichTextEditor
                 value={scopeEngagementText}
-                onChange={(e) => setScopeFields(upsertScopeEngagementField(scopeFields, e.target.value))}
+                onChange={(html) => setScopeFields(upsertScopeEngagementField(scopeFields, html))}
               />
             </div>
           }
@@ -379,12 +386,7 @@ export function ProposalWizardReview(props: ProposalWizardReviewProps) {
         <DocSection
           n={nextNum()}
           title="Prerequisites"
-          preview={
-            <div
-              className="text-sm [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-              dangerouslySetInnerHTML={{ __html: listFieldHtml(prerequisites) }}
-            />
-          }
+          preview={<ProposalRichText content={listFieldHtml(prerequisites)} className="text-sm leading-relaxed" />}
           editor={richListEditor(
             "Prerequisites",
             prerequisites,
@@ -399,16 +401,7 @@ export function ProposalWizardReview(props: ProposalWizardReviewProps) {
           key={`${sec.title}-${sec.content.slice(0, 32)}`}
           n={nextNum()}
           title={customSectionTitle(sec.title)}
-          preview={
-            looksLikeHtml(sec.content) ? (
-              <div
-                className="text-sm [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5"
-                dangerouslySetInnerHTML={{ __html: sec.content }}
-              />
-            ) : (
-              <p className="whitespace-pre-wrap">{plainTextField(sec.content) || "—"}</p>
-            )
-          }
+          preview={<ProposalRichText content={sec.content} className="text-sm leading-relaxed" />}
         />
       ))}
 
@@ -422,7 +415,7 @@ export function ProposalWizardReview(props: ProposalWizardReviewProps) {
               className="w-full text-sm border-collapse"
               cellClassName="px-3 py-2 border border-gray-300 align-top"
             />
-            {commercials.notes ? <p className="text-muted-foreground whitespace-pre-wrap">{plainTextField(commercials.notes)}</p> : null}
+            {commercials.notes ? <ProposalRichText content={commercials.notes} className="text-muted-foreground text-sm" /> : null}
           </div>
         }
         editor={
@@ -434,7 +427,7 @@ export function ProposalWizardReview(props: ProposalWizardReviewProps) {
               <div className="flex justify-between"><span>GST</span><span>₹ {gstAmount.toLocaleString("en-IN")}</span></div>
               <div className="flex justify-between font-semibold"><span>Total</span><span>₹ {total.toLocaleString("en-IN")}</span></div>
             </div>
-            <div className="space-y-1"><Label>Notes</Label><Textarea value={commNotes} onChange={(e) => setCommNotes(e.target.value)} /></div>
+            <div className="space-y-1"><Label>Notes</Label><RichTextEditor value={commNotes} onChange={setCommNotes} /></div>
           </div>
         }
       />

@@ -1,6 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { Button } from "@/components/ui/button";
 import { StringListEditor } from "@/components/ListEditor";
 import type { ClientResearch } from "@/lib/client-research";
@@ -53,10 +53,10 @@ export function ClientResearchForm({ research, onChange, onUseLogo, clientLogo }
 
       <div className="space-y-1">
         <Label>About the company</Label>
-        <Textarea
+        <RichTextEditor
           className="min-h-[140px]"
           value={research.about}
-          onChange={(e) => patch({ about: e.target.value })}
+          onChange={(html) => patch({ about: html })}
           placeholder="Brief company overview used in the executive summary…"
         />
       </div>

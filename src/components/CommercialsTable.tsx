@@ -3,8 +3,12 @@ import {
   COMMERCIALS_TABLE_HEADERS,
 } from "@/lib/commercials-table";
 import type { ProposalPreviewData } from "@/lib/proposal-preview";
-
-const ACCENT = "#D5E8F0";
+import {
+  PROPOSAL_TABLE_BODY_CELL_CLASS,
+  PROPOSAL_TABLE_CLASS,
+  PROPOSAL_TABLE_HEADER_CELL_CLASS,
+  PROPOSAL_TABLE_WRAPPER_CLASS,
+} from "@/lib/rich-html-table";
 
 type CommercialsTableProps = {
   commercials: ProposalPreviewData["commercials"];
@@ -14,18 +18,18 @@ type CommercialsTableProps = {
 
 export function CommercialsTable({
   commercials,
-  className = "w-full text-[13px] border-collapse",
-  cellClassName = "px-3 py-2 border border-gray-300 align-top",
+  className = PROPOSAL_TABLE_CLASS,
+  cellClassName = PROPOSAL_TABLE_BODY_CELL_CLASS,
 }: CommercialsTableProps) {
   const rows = buildCommercialsTableRows(commercials);
 
   return (
-    <div className="overflow-x-auto rounded border border-gray-300">
+    <div className={PROPOSAL_TABLE_WRAPPER_CLASS}>
       <table className={className}>
         <thead>
-          <tr style={{ backgroundColor: ACCENT }}>
+          <tr>
             {COMMERCIALS_TABLE_HEADERS.map((header) => (
-              <th key={header} className={`text-left font-semibold ${cellClassName}`}>
+              <th key={header} className={PROPOSAL_TABLE_HEADER_CELL_CLASS}>
                 {header}
               </th>
             ))}

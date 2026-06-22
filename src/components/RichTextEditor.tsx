@@ -5,8 +5,21 @@ import TextAlign from "@tiptap/extension-text-align";
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
 import Image from "@tiptap/extension-image";
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { RICH_TEXT_TABLE_CLASS } from "@/lib/rich-html-table";
+import {
+  Columns,
+  Columns2,
+  Plus,
+  Rows,
+  Table as TableIcon,
+  Trash2,
+} from "lucide-react";
 
 const TOOLBAR_BTN = "p-1 rounded hover:bg-muted transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
 const ACTIVE = "bg-muted text-foreground";
@@ -27,14 +40,17 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
       Link.configure({ openOnClick: false }),
       Image.configure({ allowBase64: true }),
       Placeholder.configure({ placeholder: placeholder ?? "Enter content…" }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: value,
-    onUpdate({ editor }) {
-      onChange(editor.getHTML());
+    onUpdate({ editor: ed }) {
+      onChange(ed.getHTML());
     },
   });
 
-  // Sync external value changes (e.g. after import-fill)
   useEffect(() => {
     if (!editor) return;
     const current = editor.getHTML();
@@ -45,11 +61,17 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
 
   if (!editor) return null;
 
-  const btn = (active: boolean, action: () => void, title: string, children: React.ReactNode) => (
+  const inTable = editor.isActive("table");
+
+  const btn = (active: boolean, action: () => void, title: string, children: React.ReactNode, disabled = false) => (
     <button
       type="button"
       title={title}
-      onMouseDown={(e) => { e.preventDefault(); action(); }}
+      disabled={disabled}
+      onMouseDown={(e) => {
+        e.preventDefault();
+        if (!disabled) action();
+      }}
       className={cn(TOOLBAR_BTN, active && ACTIVE)}
     >
       {children}
@@ -58,7 +80,6 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
 
   return (
     <div className={cn("border rounded-md overflow-hidden", className)}>
-      {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-0.5 px-2 py-1 border-b bg-muted/30 text-sm">
         {btn(editor.isActive("bold"), () => editor.chain().focus().toggleBold().run(), "Bold", <b>B</b>)}
         {btn(editor.isActive("italic"), () => editor.chain().focus().toggleItalic().run(), "Italic", <i>I</i>)}
@@ -84,7 +105,6 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
 
         <span className="w-px h-4 bg-border mx-1" />
 
-        {/* Paragraph / Heading select */}
         <select
           className="text-xs bg-transparent border border-border rounded px-1 py-0.5 cursor-pointer"
           value={
@@ -106,15 +126,24 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
 
         <span className="w-px h-4 bg-border mx-1" />
 
+        {btn(inTable, () => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(), "Insert table", <TableIcon className="h-3.5 w-3.5" />)}
+        {btn(false, () => editor.chain().focus().addRowAfter().run(), "Add row below", <Plus className="h-3.5 w-3.5" />, !inTable)}
+        {btn(false, () => editor.chain().focus().deleteRow().run(), "Delete row", <Rows className="h-3.5 w-3.5" />, !inTable)}
+        {btn(false, () => editor.chain().focus().addColumnAfter().run(), "Add column right", <Columns2 className="h-3.5 w-3.5" />, !inTable)}
+        {btn(false, () => editor.chain().focus().deleteColumn().run(), "Delete column", <Columns className="h-3.5 w-3.5" />, !inTable)}
+        {btn(false, () => editor.chain().focus().deleteTable().run(), "Delete table", <Trash2 className="h-3.5 w-3.5" />, !inTable)}
+
+        <span className="w-px h-4 bg-border mx-1" />
+
         {btn(editor.isActive("code"), () => editor.chain().focus().toggleCode().run(), "Inline code",
           <span className="font-mono text-xs">&lt;&gt;</span>)}
       </div>
 
-      {/* Editor area */}
       <EditorContent
         editor={editor}
         className={cn(
           "rich-text-editor p-3 min-h-[120px] text-sm leading-relaxed focus-within:outline-none",
+          RICH_TEXT_TABLE_CLASS,
           "[&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[96px]",
           "[&_.ProseMirror_ul]:list-disc [&_.ProseMirror_ul]:pl-6 [&_.ProseMirror_ul]:my-2",
           "[&_.ProseMirror_ol]:list-decimal [&_.ProseMirror_ol]:pl-6 [&_.ProseMirror_ol]:my-2",
@@ -129,6 +158,8 @@ export function RichTextEditor({ value, onChange, placeholder, className }: Prop
           "[&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none",
           "[&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left",
           "[&_.ProseMirror_p.is-editor-empty:first-child::before]:h-0",
+          "[&_.ProseMirror_table]:table-fixed",
+          "[&_.ProseMirror_selectedCell]:outline [&_.ProseMirror_selectedCell]:outline-2 [&_.ProseMirror_selectedCell]:outline-primary/40",
         )}
       />
     </div>
