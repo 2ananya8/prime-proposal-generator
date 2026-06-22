@@ -30,6 +30,29 @@ export function validatePasswordPair(password: string, confirm: string): string 
   return null;
 }
 
+/** User-facing message for forgot-password / reset-email failures. */
+export function formatPasswordResetError(err: unknown): string {
+  const msg =
+    err && typeof err === "object" && "message" in err
+      ? String((err as { message: string }).message)
+      : err instanceof Error
+        ? err.message
+        : "";
+  const lower = msg.toLowerCase();
+
+  if (/rate limit|too many.*email|email.*limit/i.test(lower)) {
+    return "Too many reset emails sent. Please wait about an hour before trying again.";
+  }
+  if (/redirect|callback url/i.test(lower)) {
+    return "Password reset is not configured for this app. Contact your administrator.";
+  }
+  if (/invalid.*email|valid email/i.test(lower)) {
+    return "Enter a valid email address.";
+  }
+  if (msg) return msg;
+  return "Could not send reset email. Please try again later.";
+}
+
 export async function requestPasswordReset(email: string) {
   const { supabase } = await import("@/integrations/supabase/client");
   const redirectTo = getAppUrl("/auth/reset-password");

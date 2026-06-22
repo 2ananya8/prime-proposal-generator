@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { authRequired } from "@/lib/auth-session";
-import { requestPasswordReset } from "@/lib/auth-password";
+import { formatPasswordResetError, requestPasswordReset } from "@/lib/auth-password";
 import { publicAsset } from "@/lib/public-asset";
 import { PRIME_LOGO_ALT } from "@/lib/proposal-header-footer.constants";
 import { toast } from "sonner";
@@ -32,7 +32,7 @@ function ForgotPasswordPage() {
       setSent(true);
       toast.success("Check your email for a reset link");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Could not send reset email");
+      toast.error(formatPasswordResetError(err));
     } finally {
       setBusy(false);
     }
