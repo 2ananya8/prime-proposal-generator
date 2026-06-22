@@ -77,9 +77,7 @@ export function buildProposalPreview(proposal: any): ProposalPreviewData | null 
   const service = proposal.service;
   if (!service) return null;
   const commercials = normalizeCommercials(proposal.commercials as any);
-  const timeline = ((proposal.timeline_overrides as any)?.length
-    ? proposal.timeline_overrides
-    : service.timeline_phases) ?? [];
+  const timeline = (proposal.timeline_overrides as any) ?? [];
   const scopeRaw = (proposal.scope_details as Record<string, unknown>) || {};
   const contentOverrides = scopeRaw.content_overrides as ProposalContentOverrides | undefined;
   const scope = parseScopeFromDetails(scopeRaw);

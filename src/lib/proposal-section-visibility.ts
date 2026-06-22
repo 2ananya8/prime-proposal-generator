@@ -5,7 +5,6 @@ import {
   normalizeApproachForExport,
   benefitsToHtml,
   normalizeExtraSectionsForForm,
-  normalizeTimelineForExport,
   prerequisitesToHtml,
 } from "./service-field-helpers";
 import { overviewRowsToHtml } from "./project-overview";
@@ -123,10 +122,7 @@ export type ProposalSectionContent = {
 };
 
 function getRawTimelineRows(data: ProposalPreviewData): string[][] {
-  if (data.timeline.length) {
-    return data.timeline.map((t) => [t.phase || "", t.activity || "", t.duration || ""]);
-  }
-  return normalizeTimelineForExport(data.service.timeline_phases);
+  return data.timeline.map((t) => [t.phase || "", t.activity || "", t.duration || ""]);
 }
 
 export function getProposalSectionContent(data: ProposalPreviewData): ProposalSectionContent {

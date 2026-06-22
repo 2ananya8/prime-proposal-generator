@@ -1,5 +1,4 @@
 import type { ProposalPreviewData } from "./proposal-preview";
-import { normalizeTimelineForExport } from "./service-field-helpers";
 import { getFilledTimelineRows } from "./proposal-section-visibility";
 import {
   WAPT_DISCLAIMER,
@@ -20,10 +19,7 @@ export function getApplicationsLabel(scope: ProposalPreviewData["scope"]): strin
 }
 
 export function getTimelineRows(data: ProposalPreviewData): string[][] {
-  const timelineRows = data.timeline.length
-    ? data.timeline.map((t) => [t.phase || "", t.activity || "", t.duration || ""])
-    : normalizeTimelineForExport(data.service.timeline_phases);
-
+  const timelineRows = data.timeline.map((t) => [t.phase || "", t.activity || "", t.duration || ""]);
   return getFilledTimelineRows(timelineRows);
 }
 

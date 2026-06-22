@@ -13,7 +13,6 @@ import { ArrowLeft, ArrowRight, Loader2, Sparkles, Plus } from "lucide-react";
 import { LOGO_ACCEPT, readLogoFileAsDataUrl, validateLogoDataUrl } from "@/lib/image-upload";
 import { runClientResearch, runDraftExecutiveSummary } from "@/lib/research-client";
 import { emptyClientResearch, type ClientResearch } from "@/lib/client-research";
-import { timelineObjectsFromService } from "@/lib/service-field-helpers";
 import { ClientResearchForm } from "@/components/ClientResearchForm";
 import { ServiceForm, emptyService, type ServiceFormValue } from "@/components/ServiceForm";
 import { ObjectListEditor } from "@/components/ListEditor";
@@ -119,15 +118,9 @@ function Wizard() {
         ? "Generating AI draft…"
         : "Leave blank to use the service template or AI draft.";
 
-  // Pre-fill timeline when service selected
+  // Reset derived proposal state when the service changes.
   useEffect(() => {
-    if (selectedService && !timeline.length) {
-      setTimeline(timelineObjectsFromService((selectedService as any).timeline_phases));
-    }
-  }, [selectedService]); // eslint-disable-line
-
-  // Reset derived executive-summary state when the service changes.
-  useEffect(() => {
+    setTimeline([]);
     setExecSummaryUser(null);
     setExecSummaryAi("");
     setExecSummaryPreferAi(false);
