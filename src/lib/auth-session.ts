@@ -1,4 +1,10 @@
 import { hasSupabaseConfig, isLocalStorageMode } from "./app-config";
+import {
+  bindAuthSessionToPage,
+  clearAuthSessionMeta,
+  clearLegacyPersistedAuth,
+  getAuthSessionPolicyFailure,
+} from "./auth-session-policy";
 
 export type AppProfile = {
   id: string;
@@ -14,8 +20,14 @@ async function getSupabase() {
 
 export async function getAuthSession() {
   if (isLocalStorageMode() || !hasSupabaseConfig()) return null;
+  clearLegacyPersistedAuth();
   const supabase = await getSupabase();
   const { data } = await supabase.auth.getSession();
+  const failure = getAuthSessionPolicyFailure(Boolean(data.session));
+  if (failure) {
+    await signOut();
+    return null;
+  }
   return data.session;
 }
 
@@ -34,11 +46,13 @@ export async function signInWithPassword(email: string, password: string) {
   const supabase = await getSupabase();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
+  bindAuthSessionToPage();
   return data;
 }
 
 export async function signOut() {
   const supabase = await getSupabase();
+  clearAuthSessionMeta();
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }

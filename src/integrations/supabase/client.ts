@@ -13,7 +13,8 @@ function createSupabaseClient() {
 
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
     auth: {
-      storage: typeof window !== "undefined" ? localStorage : undefined,
+      // sessionStorage: cleared when the tab closes; refresh handled via page-instance binding.
+      storage: typeof window !== "undefined" ? window.sessionStorage : undefined,
       persistSession: true,
       autoRefreshToken: true,
     },

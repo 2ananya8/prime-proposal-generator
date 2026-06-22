@@ -9,6 +9,11 @@ import {
 } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { authRequired, fetchProfile, signOut as authSignOut, type AppProfile } from "./auth-session";
+import {
+  clearLegacyPersistedAuth,
+  getAuthSessionPolicyFailure,
+  msUntilAuthExpiry,
+} from "./auth-session-policy";
 
 type AuthContextValue = {
   session: Session | null;
@@ -41,6 +46,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfile(session.user.id);
   }, [loadProfile, session?.user?.id]);
 
+  const signOut = useCallback(async () => {
+    await authSignOut();
+    setSession(null);
+    setProfile(null);
+  }, []);
+
+  const enforceSessionPolicy = useCallback(async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data } = await supabase.auth.getSession();
+    const failure = getAuthSessionPolicyFailure(Boolean(data.session));
+    if (failure) {
+      await signOut();
+      if (typeof window !== "undefined" && !window.location.pathname.endsWith("/auth")) {
+        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+        window.location.href = `${base}/auth`;
+      }
+      return false;
+    }
+    return Boolean(data.session);
+  }, [signOut]);
+
   useEffect(() => {
     if (!authRequired()) {
       setLoading(false);
@@ -48,22 +74,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     let mounted = true;
+    let expiryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const scheduleExpiryCheck = () => {
+      if (expiryTimer) clearTimeout(expiryTimer);
+      const ms = msUntilAuthExpiry();
+      if (ms == null) return;
+      expiryTimer = setTimeout(() => {
+        void enforceSessionPolicy();
+      }, ms + 50);
+    };
+
     (async () => {
+      clearLegacyPersistedAuth();
       const { supabase } = await import("@/integrations/supabase/client");
       const { data } = await supabase.auth.getSession();
+      const failure = getAuthSessionPolicyFailure(Boolean(data.session));
+      if (failure) {
+        await signOut();
+        if (mounted) setLoading(false);
+        return;
+      }
       if (!mounted) return;
       setSession(data.session);
       if (data.session?.user?.id) {
         await loadProfile(data.session.user.id);
       }
+      scheduleExpiryCheck();
       setLoading(false);
     })();
 
     let subscription: { unsubscribe: () => void } | undefined;
     (async () => {
       const { supabase } = await import("@/integrations/supabase/client");
-      const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+      const { data } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
         if (!mounted) return;
+        if (event === "SIGNED_IN" && nextSession) {
+          scheduleExpiryCheck();
+        }
+        if (event === "SIGNED_OUT" && expiryTimer) {
+          clearTimeout(expiryTimer);
+        }
+        const failure = getAuthSessionPolicyFailure(Boolean(nextSession));
+        if (failure) {
+          await signOut();
+          return;
+        }
         setSession(nextSession);
         if (nextSession?.user?.id) {
           await loadProfile(nextSession.user.id);
@@ -74,17 +130,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       subscription = data.subscription;
     })();
 
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void enforceSessionPolicy();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
     return () => {
       mounted = false;
+      if (expiryTimer) clearTimeout(expiryTimer);
       subscription?.unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [loadProfile]);
-
-  const signOut = useCallback(async () => {
-    await authSignOut();
-    setSession(null);
-    setProfile(null);
-  }, []);
+  }, [loadProfile, signOut, enforceSessionPolicy]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
