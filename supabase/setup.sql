@@ -130,6 +130,11 @@ DROP POLICY IF EXISTS "Authenticated can insert proposals" ON public.proposals;
 DROP POLICY IF EXISTS "Authenticated can update proposals" ON public.proposals;
 DROP POLICY IF EXISTS "Authenticated can delete proposals" ON public.proposals;
 
+DROP POLICY IF EXISTS "services_select_authenticated" ON public.services;
+DROP POLICY IF EXISTS "services_insert_own" ON public.services;
+DROP POLICY IF EXISTS "services_update_own_or_admin" ON public.services;
+DROP POLICY IF EXISTS "services_delete_own_or_admin" ON public.services;
+
 CREATE POLICY "services_select_authenticated" ON public.services
   FOR SELECT TO authenticated USING (true);
 CREATE POLICY "services_insert_own" ON public.services
@@ -140,6 +145,11 @@ CREATE POLICY "services_update_own_or_admin" ON public.services
   WITH CHECK (public.is_admin() OR created_by = auth.uid());
 CREATE POLICY "services_delete_own_or_admin" ON public.services
   FOR DELETE TO authenticated USING (public.is_admin() OR created_by = auth.uid());
+
+DROP POLICY IF EXISTS "proposals_select_authenticated" ON public.proposals;
+DROP POLICY IF EXISTS "proposals_insert_own" ON public.proposals;
+DROP POLICY IF EXISTS "proposals_update_own_or_admin" ON public.proposals;
+DROP POLICY IF EXISTS "proposals_delete_own_or_admin" ON public.proposals;
 
 CREATE POLICY "proposals_select_authenticated" ON public.proposals
   FOR SELECT TO authenticated USING (true);

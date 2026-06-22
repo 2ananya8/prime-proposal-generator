@@ -53,7 +53,13 @@ ON CONFLICT (id) DO UPDATE SET role = 'admin';
 ```
 
 3. **Authentication → Providers** — enable Email/password and **disable public signups**.
-4. Deploy Edge Functions (for in-app user management):
+4. **Authentication → URL Configuration** — set **Site URL** to your deployed app (e.g. `https://you.github.io/prime-proposal-generator/`) and add this **Redirect URL** for password reset emails:
+
+   `https://you.github.io/prime-proposal-generator/auth/reset-password`
+
+   (Use `http://localhost:3000/auth/reset-password` for local dev.)
+
+5. Deploy Edge Functions (for in-app user management):
 
 ```bash
 npx supabase functions deploy admin-create-user
@@ -62,7 +68,17 @@ npx supabase functions deploy admin-delete-user
 
 Set `SUPABASE_SERVICE_ROLE_KEY` in **Supabase Dashboard → Edge Functions → Secrets** (not in GitHub Pages build).
 
-5. Sign in at `/auth` on the deployed app.
+6. Sign in at `/auth` on the deployed app.
+
+### Passwords
+
+| Flow | How it works |
+|------|----------------|
+| **First sign-in** | Admin-created users get a temporary password and are prompted to set a new one before using the app. |
+| **Change password** | Signed-in users: sidebar → **Change password** (`/account/password`). |
+| **Forgot password** | Sign-in page → **Forgot password?** → email reset link → `/auth/reset-password`. |
+
+Supabase must have **email delivery** configured (built-in or custom SMTP) for reset links to arrive.
 
 ### Roles
 
@@ -71,7 +87,7 @@ Set `SUPABASE_SERVICE_ROLE_KEY` in **Supabase Dashboard → Edge Functions → S
 | **Admin** | Add/remove users; edit any service or proposal |
 | **User** | Create services/proposals; edit/delete only own; view and download all proposals |
 
-Additional users are added by the admin under **Users** in the sidebar (email + temporary password).
+Additional users are added by the admin under **Users** in the sidebar (email + temporary password). They must choose a new password on first sign-in.
 
 ## Generated Files
 

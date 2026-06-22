@@ -78,7 +78,7 @@ function AdminUsersPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Add user</CardTitle>
-          <CardDescription>Creates an account with email and a temporary password (min. 8 characters).</CardDescription>
+          <CardDescription>Creates an account with email and a temporary password (min. 8 characters). The user must set a new password on first sign-in.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={addUser} className="space-y-3">

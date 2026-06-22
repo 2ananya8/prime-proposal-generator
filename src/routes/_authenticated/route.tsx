@@ -1,7 +1,8 @@
 import { createFileRoute, Outlet, Link, useRouterState, redirect } from "@tanstack/react-router";
-import { FileText, Wrench, LayoutDashboard, Users, LogOut } from "lucide-react";
+import { FileText, Wrench, LayoutDashboard, Users, LogOut, KeyRound } from "lucide-react";
 import { hasSupabaseConfig, isLocalStorageMode } from "@/lib/app-config";
 import { authRequired, getAuthSession } from "@/lib/auth-session";
+import { mustChangePassword } from "@/lib/auth-password";
 import { useAuth, useAuthOptional } from "@/lib/auth";
 import { PRIME_LOGO_ALT } from "@/lib/proposal-header-footer.constants";
 import { publicAsset } from "@/lib/public-asset";
@@ -9,10 +10,13 @@ import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
-  beforeLoad: async () => {
+  beforeLoad: async ({ location }) => {
     if (!authRequired()) return;
     const session = await getAuthSession();
     if (!session) throw redirect({ to: "/auth" });
+    if (mustChangePassword(session.user) && location.pathname !== "/account/password") {
+      throw redirect({ to: "/account/password" });
+    }
   },
   component: Shell,
 });
@@ -21,8 +25,9 @@ function Shell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isProposalPreview = /\/proposals\/[^/]+\/preview$/.test(path);
   const auth = useAuthOptional();
+  const passwordChangeRequired = mustChangePassword(auth?.user);
 
-  if (isProposalPreview) {
+  if (isProposalPreview || passwordChangeRequired) {
     return (
       <div className="min-h-screen">
         <Outlet />
@@ -57,11 +62,18 @@ function Shell() {
           {item("/proposals", "Proposals", FileText)}
           {auth?.isAdmin ? item("/admin/users", "Users", Users) : null}
         </nav>
-        {authRequired() && auth?.profile && (
+        {authRequired() && auth?.profile && !passwordChangeRequired && (
           <div className="border-t p-3 shrink-0 space-y-2">
             <p className="text-xs text-muted-foreground truncate px-1" title={auth.profile.email}>
               {auth.profile.email}
             </p>
+            <Link
+              to="/account/password"
+              className="flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-muted"
+            >
+              <KeyRound className="h-4 w-4" />
+              Change password
+            </Link>
             <SignOutButton />
           </div>
         )}
