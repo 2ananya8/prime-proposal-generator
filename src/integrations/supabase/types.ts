@@ -14,6 +14,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      profiles: {
+        Row: {
+          id: string
+          email: string
+          role: string
+          created_at: string
+        }
+        Insert: {
+          id: string
+          email: string
+          role?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          email?: string
+          role?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       proposals: {
         Row: {
           client_name: string
@@ -153,7 +174,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_admin: { Args: Record<string, never>; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

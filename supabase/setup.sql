@@ -47,6 +47,17 @@ CREATE TABLE IF NOT EXISTS public.proposals (
 
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS client_logo TEXT;
 
+-- Profiles (app roles)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS profiles_single_admin
+  ON public.profiles (role) WHERE role = 'admin';
+
 -- updated_at trigger
 CREATE OR REPLACE FUNCTION public.tg_set_updated_at() RETURNS TRIGGER AS $$
 BEGIN NEW.updated_at = now(); RETURN NEW; END;
@@ -62,37 +73,83 @@ CREATE TRIGGER proposals_set_updated_at
   BEFORE UPDATE ON public.proposals
   FOR EACH ROW EXECUTE FUNCTION public.tg_set_updated_at();
 
--- Permissions
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.services TO authenticated, anon, service_role;
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.proposals TO authenticated, anon, service_role;
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE id = auth.uid() AND role = 'admin'
+  );
+$$;
 
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, role)
+  VALUES (NEW.id, COALESCE(NEW.email, ''), 'user')
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Permissions (authenticated only — no anon access)
+GRANT SELECT ON public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.services TO authenticated, service_role;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.proposals TO authenticated, service_role;
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.proposals ENABLE ROW LEVEL SECURITY;
 
--- Authenticated policies
-DROP POLICY IF EXISTS "Authenticated can read services" ON public.services;
-CREATE POLICY "Authenticated can read services" ON public.services FOR SELECT TO authenticated USING (true);
-DROP POLICY IF EXISTS "Authenticated can insert services" ON public.services;
-CREATE POLICY "Authenticated can insert services" ON public.services FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR created_by IS NULL);
-DROP POLICY IF EXISTS "Authenticated can update services" ON public.services;
-CREATE POLICY "Authenticated can update services" ON public.services FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "Authenticated can delete services" ON public.services;
-CREATE POLICY "Authenticated can delete services" ON public.services FOR DELETE TO authenticated USING (true);
+DROP POLICY IF EXISTS "profiles_select_own_or_admin" ON public.profiles;
+CREATE POLICY "profiles_select_own_or_admin" ON public.profiles
+  FOR SELECT TO authenticated
+  USING (id = auth.uid() OR public.is_admin());
 
-DROP POLICY IF EXISTS "Authenticated can read proposals" ON public.proposals;
-CREATE POLICY "Authenticated can read proposals" ON public.proposals FOR SELECT TO authenticated USING (true);
-DROP POLICY IF EXISTS "Authenticated can insert proposals" ON public.proposals;
-CREATE POLICY "Authenticated can insert proposals" ON public.proposals FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by OR created_by IS NULL);
-DROP POLICY IF EXISTS "Authenticated can update proposals" ON public.proposals;
-CREATE POLICY "Authenticated can update proposals" ON public.proposals FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-DROP POLICY IF EXISTS "Authenticated can delete proposals" ON public.proposals;
-CREATE POLICY "Authenticated can delete proposals" ON public.proposals FOR DELETE TO authenticated USING (true);
-
--- Anonymous access (app uses anon key without login)
 DROP POLICY IF EXISTS "anon_all_services" ON public.services;
-CREATE POLICY "anon_all_services" ON public.services FOR ALL TO anon USING (true) WITH CHECK (true);
 DROP POLICY IF EXISTS "anon_all_proposals" ON public.proposals;
-CREATE POLICY "anon_all_proposals" ON public.proposals FOR ALL TO anon USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated can read services" ON public.services;
+DROP POLICY IF EXISTS "Authenticated can insert services" ON public.services;
+DROP POLICY IF EXISTS "Authenticated can update services" ON public.services;
+DROP POLICY IF EXISTS "Authenticated can delete services" ON public.services;
+DROP POLICY IF EXISTS "Authenticated can read proposals" ON public.proposals;
+DROP POLICY IF EXISTS "Authenticated can insert proposals" ON public.proposals;
+DROP POLICY IF EXISTS "Authenticated can update proposals" ON public.proposals;
+DROP POLICY IF EXISTS "Authenticated can delete proposals" ON public.proposals;
 
--- Tell PostgREST to reload schema (fixes "not in schema cache" after creating tables)
+CREATE POLICY "services_select_authenticated" ON public.services
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "services_insert_own" ON public.services
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "services_update_own_or_admin" ON public.services
+  FOR UPDATE TO authenticated
+  USING (public.is_admin() OR created_by = auth.uid())
+  WITH CHECK (public.is_admin() OR created_by = auth.uid());
+CREATE POLICY "services_delete_own_or_admin" ON public.services
+  FOR DELETE TO authenticated USING (public.is_admin() OR created_by = auth.uid());
+
+CREATE POLICY "proposals_select_authenticated" ON public.proposals
+  FOR SELECT TO authenticated USING (true);
+CREATE POLICY "proposals_insert_own" ON public.proposals
+  FOR INSERT TO authenticated WITH CHECK (auth.uid() = created_by);
+CREATE POLICY "proposals_update_own_or_admin" ON public.proposals
+  FOR UPDATE TO authenticated
+  USING (public.is_admin() OR created_by = auth.uid())
+  WITH CHECK (public.is_admin() OR created_by = auth.uid());
+CREATE POLICY "proposals_delete_own_or_admin" ON public.proposals
+  FOR DELETE TO authenticated USING (public.is_admin() OR created_by = auth.uid());
+
 NOTIFY pgrst, 'reload schema';

@@ -11,24 +11,34 @@ async function sb() {
   return supabase;
 }
 
+export async function getCurrentUserId(): Promise<string | null> {
+  if (isLocalStorageMode()) return null;
+  const supabase = await sb();
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
+}
+
 function formatDbError(error: { message?: string; code?: string }) {
   const msg = error.message ?? "Database error";
   if (/schema cache|relation.*does not exist|Could not find the table/i.test(msg)) {
     return "Database tables are missing. Open Supabase Dashboard → SQL Editor, run supabase/setup.sql, then try again.";
+  }
+  if (/row-level security|permission denied|42501/i.test(msg)) {
+    return "You do not have permission to perform this action.";
   }
   return msg;
 }
 
 export async function listServices() {
   if (isLocalStorageMode()) {
-    return localStore.listServices().map(({ id, name, service_type, short_code, updated_at }) => ({
-      id, name, service_type, short_code, updated_at,
+    return localStore.listServices().map(({ id, name, service_type, short_code, updated_at, created_by }) => ({
+      id, name, service_type, short_code, updated_at, created_by,
     }));
   }
   const supabase = await sb();
   const { data, error } = await supabase
     .from("services")
-    .select("id, name, service_type, short_code, updated_at")
+    .select("id, name, service_type, short_code, updated_at, created_by")
     .order("name");
   if (error) throw new Error(formatDbError(error));
   return data ?? [];
@@ -75,7 +85,9 @@ export async function createService(value: ServiceFormValue) {
   const row = serviceFormToRow(value);
   if (isLocalStorageMode()) return localStore.createService(value);
   const supabase = await sb();
-  const { data, error } = await supabase.from("services").insert({ ...row, created_by: null }).select("id").single();
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("You must be signed in to create a service.");
+  const { data, error } = await supabase.from("services").insert({ ...row, created_by: userId }).select("id").single();
   if (error) throw new Error(formatDbError(error));
   return data!;
 }
@@ -118,6 +130,7 @@ export async function listProposals() {
         id: p.id,
         client_name: p.client_name,
         proposal_date: p.proposal_date,
+        created_by: p.created_by,
         generated_pdf_path: p.generated_pdf_path,
         service: service ? { name: service.name, short_code: service.short_code } : null,
       };
@@ -126,7 +139,7 @@ export async function listProposals() {
   const supabase = await sb();
   const { data, error } = await supabase
     .from("proposals")
-    .select("id, client_name, proposal_date, service:services(name, short_code), generated_pdf_path")
+    .select("id, client_name, proposal_date, created_by, service:services(name, short_code), generated_pdf_path")
     .order("created_at", { ascending: false });
   if (error) throw new Error(formatDbError(error));
   return data ?? [];
@@ -140,6 +153,7 @@ export async function listRecentProposals() {
         id: p.id,
         client_name: p.client_name,
         proposal_date: p.proposal_date,
+        created_by: p.created_by,
         service: service ? { name: service.name } : null,
       };
     });
@@ -147,7 +161,7 @@ export async function listRecentProposals() {
   const supabase = await sb();
   const { data, error } = await supabase
     .from("proposals")
-    .select("id, client_name, proposal_date, service:services(name)")
+    .select("id, client_name, proposal_date, created_by, service:services(name)")
     .order("created_at", { ascending: false })
     .limit(5);
   if (error) throw new Error(formatDbError(error));
@@ -176,7 +190,9 @@ export async function createProposal(input: CreateProposalInput) {
   assertValidClientLogo(input.client_logo);
   if (isLocalStorageMode()) return localStore.createProposal(input);
   const supabase = await sb();
-  const { data, error } = await supabase.from("proposals").insert({ ...input, created_by: null }).select("id").single();
+  const userId = await getCurrentUserId();
+  if (!userId) throw new Error("You must be signed in to create a proposal.");
+  const { data, error } = await supabase.from("proposals").insert({ ...input, created_by: userId }).select("id").single();
   if (error) throw new Error(formatDbError(error));
   return data!;
 }
@@ -201,4 +217,15 @@ export async function deleteProposal(id: string) {
   const supabase = await sb();
   const { error } = await supabase.from("proposals").delete().eq("id", id);
   if (error) throw new Error(formatDbError(error));
+}
+
+export async function listProfiles() {
+  if (isLocalStorageMode()) return [];
+  const supabase = await sb();
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, email, role, created_at")
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(formatDbError(error));
+  return data ?? [];
 }

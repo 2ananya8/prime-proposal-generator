@@ -13,6 +13,9 @@ import { Input } from "@/components/ui/input";
 import { deleteProposal, getProposal, updateProposalClientLogo, updateProposalSummary } from "@/lib/data-api";
 import { LOGO_ACCEPT, readLogoFileAsDataUrl } from "@/lib/image-upload";
 import { buildProposalPreview } from "@/lib/proposal-preview";
+import { useAuth } from "@/lib/auth";
+import { canEditProposal } from "@/lib/permissions";
+import { authRequired } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/_authenticated/proposals/$id")({
   component: ProposalDetail,
@@ -21,6 +24,7 @@ export const Route = createFileRoute("/_authenticated/proposals/$id")({
 function ProposalDetail() {
   const { id } = Route.useParams();
   const nav = useNavigate();
+  const auth = useAuth();
   const [generating, setGenerating] = useState(false);
   const [editingSummary, setEditingSummary] = useState(false);
   const [summary, setSummary] = useState("");
@@ -102,6 +106,7 @@ function ProposalDetail() {
 
   if (q.isLoading) return <p>Loading…</p>;
   if (!p) return <p>Not found.</p>;
+  const editable = !authRequired() || canEditProposal(auth.profile, auth.user?.id, p);
   const commercials = p.commercials as any;
   const research = p.client_research as any;
 
@@ -118,7 +123,9 @@ function ProposalDetail() {
             <Button variant="outline"><Eye className="h-4 w-4 mr-1" />Preview</Button>
           </Link>
           <Button onClick={generate} disabled={generating}>{generating ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Generating</> : <><Sparkles className="h-4 w-4 mr-1" />Generate DOCX/PDF</>}</Button>
-          <Button variant="ghost" size="icon" onClick={del}><Trash2 className="h-4 w-4" /></Button>
+          {editable ? (
+            <Button variant="ghost" size="icon" onClick={del}><Trash2 className="h-4 w-4" /></Button>
+          ) : null}
         </div>
       </div>
 
@@ -128,23 +135,27 @@ function ProposalDetail() {
           {(p as any).client_logo && (
             <img src={(p as any).client_logo} alt={p.client_name} className="h-14 object-contain" />
           )}
-          <Input
-            type="file"
-            accept={LOGO_ACCEPT}
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              try {
-                await saveClientLogo(await readLogoFileAsDataUrl(file));
-              } catch (err) {
-                toast.error(err instanceof Error ? err.message : "Invalid logo file");
-                e.target.value = "";
-              }
-            }}
-          />
-          {(p as any).client_logo && (
-            <Button size="sm" variant="ghost" onClick={() => saveClientLogo(null)}>Remove logo</Button>
-          )}
+          {editable ? (
+            <>
+              <Input
+                type="file"
+                accept={LOGO_ACCEPT}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    await saveClientLogo(await readLogoFileAsDataUrl(file));
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Invalid logo file");
+                    e.target.value = "";
+                  }
+                }}
+              />
+              {(p as any).client_logo && (
+                <Button size="sm" variant="ghost" onClick={() => saveClientLogo(null)}>Remove logo</Button>
+              )}
+            </>
+          ) : null}
           <p className="text-xs text-muted-foreground">PNG, JPG, or JPEG only (max 600 KB). Appears on the cover page in preview and exports.</p>
         </CardContent>
       </Card>
@@ -156,7 +167,7 @@ function ProposalDetail() {
         </CardContent></Card>
       )}
 
-      <Card><CardHeader className="flex flex-row justify-between items-center"><CardTitle className="text-base">Executive Summary</CardTitle>{!editingSummary && <Button size="sm" variant="ghost" onClick={() => setEditingSummary(true)}>Edit</Button>}</CardHeader><CardContent>
+      <Card><CardHeader className="flex flex-row justify-between items-center"><CardTitle className="text-base">Executive Summary</CardTitle>{editable && !editingSummary && <Button size="sm" variant="ghost" onClick={() => setEditingSummary(true)}>Edit</Button>}</CardHeader><CardContent>
         {editingSummary ? <>
           <RichTextEditor className="min-h-[200px]" value={summary} onChange={setSummary} />
           <div className="flex gap-2 mt-2"><Button size="sm" onClick={saveSummary}>Save</Button><Button size="sm" variant="ghost" onClick={() => { setEditingSummary(false); setSummary(p.executive_summary ?? ""); }}>Cancel</Button></div>

@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { ServiceForm, emptyService, type ServiceFormValue } from "@/components/ServiceForm";
 import { deleteService, getService, updateService } from "@/lib/data-api";
 import { mergePrerequisitesFields, normalizeExtraSectionsForForm } from "@/lib/service-field-helpers";
+import { useAuth } from "@/lib/auth";
+import { canEditService } from "@/lib/permissions";
+import { authRequired } from "@/lib/auth-session";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2 } from "lucide-react";
 
@@ -15,9 +18,11 @@ export const Route = createFileRoute("/_authenticated/services/$id")({
 function EditService() {
   const { id } = Route.useParams();
   const nav = useNavigate();
+  const auth = useAuth();
   const [v, setV] = useState<ServiceFormValue>(emptyService);
   const [busy, setBusy] = useState(false);
   const q = useQuery({ queryKey: ["service", id], queryFn: () => getService(id) });
+  const editable = !authRequired() || canEditService(auth.profile, auth.user?.id, q.data ?? {});
   useEffect(() => {
     if (q.data) setV({
       name: q.data.name, service_type: q.data.service_type, short_code: q.data.short_code ?? "",
@@ -59,11 +64,22 @@ function EditService() {
     <div className="max-w-3xl space-y-4">
       <Link to="/services" className="text-sm text-muted-foreground inline-flex items-center gap-1 hover:underline"><ArrowLeft className="h-4 w-4" />Back</Link>
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold">Edit service</h1>
-        <Button variant="ghost" size="sm" onClick={del}><Trash2 className="h-4 w-4 mr-1" />Delete</Button>
+        <h1 className="text-2xl font-semibold">{editable ? "Edit service" : "View service"}</h1>
+        {editable ? (
+          <Button variant="ghost" size="sm" onClick={del}><Trash2 className="h-4 w-4 mr-1" />Delete</Button>
+        ) : null}
       </div>
-      <ServiceForm value={v} onChange={setV} />
-      <div className="flex gap-2 sticky bottom-0 bg-background py-3 border-t"><Button disabled={busy} onClick={save}>{busy ? "Saving…" : "Save changes"}</Button></div>
+      {!editable ? (
+        <p className="text-sm text-muted-foreground rounded-md border bg-muted/30 px-3 py-2">
+          You can view this service template but only the creator or an admin can edit it.
+        </p>
+      ) : null}
+      <div className={editable ? undefined : "pointer-events-none opacity-90"}>
+        <ServiceForm value={v} onChange={setV} />
+      </div>
+      {editable ? (
+        <div className="flex gap-2 sticky bottom-0 bg-background py-3 border-t"><Button disabled={busy} onClick={save}>{busy ? "Saving…" : "Save changes"}</Button></div>
+      ) : null}
     </div>
   );
 }
