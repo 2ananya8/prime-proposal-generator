@@ -30,9 +30,9 @@ function Shell() {
     );
   };
   return (
-    <div className="min-h-screen flex bg-muted/20">
-      <aside className="w-60 border-r bg-background flex flex-col">
-        <div className="border-b p-3">
+    <div className="flex h-svh overflow-hidden bg-muted/20">
+      <aside className="flex w-60 shrink-0 flex-col border-r bg-background">
+        <div className="border-b p-3 shrink-0">
           <div className="flex items-center justify-center px-3 py-2">
             <img
               src={publicAsset("/assets/prime-logo.png")}
@@ -41,13 +41,13 @@ function Shell() {
             />
           </div>
         </div>
-        <nav className="flex-1 p-3 pt-2 space-y-1">
+        <nav className="flex-1 overflow-y-auto p-3 pt-2 space-y-1">
           {item("/dashboard", "Dashboard", LayoutDashboard)}
           {item("/services", "Services", Wrench)}
           {item("/proposals", "Proposals", FileText)}
         </nav>
       </aside>
-      <main className="flex-1 p-6 overflow-x-hidden">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden p-6">
         {isLocalStorageMode() && (
           <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             Local mode — data is saved in this browser only. Add Supabase keys to <code className="text-xs">.env</code> to sync across devices.

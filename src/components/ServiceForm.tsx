@@ -104,9 +104,17 @@ function imageCountFromHtml(html: string): number {
   return [...html.matchAll(/<img\b/gi)].length;
 }
 
-export function ServiceForm({ value, onChange }: { value: ServiceFormValue; onChange: (v: ServiceFormValue) => void }) {
+export function ServiceForm({
+  value,
+  onChange,
+  hideDefaultTimelinePhases = false,
+}: {
+  value: ServiceFormValue;
+  onChange: (v: ServiceFormValue) => void;
+  hideDefaultTimelinePhases?: boolean;
+}) {
   const [showOptional, setShowOptional] = useState(
-    !!(value.project_objectives.length || value.expected_benefits.length || value.deliverables.length || value.prerequisites.length || value.timeline_phases.length || value.executive_summary_template),
+    !!(value.project_objectives.length || value.expected_benefits.length || value.deliverables.length || value.prerequisites.length || (!hideDefaultTimelinePhases && value.timeline_phases.length) || value.executive_summary_template),
   );
   const set = <K extends keyof ServiceFormValue>(k: K, v: ServiceFormValue[K]) => onChange({ ...value, [k]: v });
 
@@ -321,7 +329,9 @@ export function ServiceForm({ value, onChange }: { value: ServiceFormValue; onCh
 
       <div className="flex items-center gap-3 p-3 border rounded-md bg-muted/30">
         <Switch checked={showOptional} onCheckedChange={setShowOptional} />
-        <span className="text-sm font-medium">Add more sections (executive summary template, objectives, benefits, deliverables, prerequisites, timeline, custom sections)</span>
+        <span className="text-sm font-medium">
+          Add more sections (executive summary template, objectives, benefits, deliverables, prerequisites{hideDefaultTimelinePhases ? "" : ", timeline"}, custom sections)
+        </span>
       </div>
 
       {showOptional && (
@@ -405,22 +415,24 @@ export function ServiceForm({ value, onChange }: { value: ServiceFormValue; onCh
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader><CardTitle className="text-base">Default Timeline Phases</CardTitle></CardHeader>
-            <CardContent>
-              <RichTextEditor
-                value={timelineToHtml(value.timeline_phases)}
-                onChange={(html) => set("timeline_phases", setListFieldHtml(html))}
-                placeholder="List timeline phases as bullets, e.g. Kickoff – Requirements review – 1 week"
-              />
-              {addImageButton(() => {
-                void addImageToHtml(
-                  timelineToHtml(value.timeline_phases),
-                  (nextHtml) => set("timeline_phases", setListFieldHtml(nextHtml)),
-                );
-              }, timelineToHtml(value.timeline_phases))}
-            </CardContent>
-          </Card>
+          {!hideDefaultTimelinePhases && (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Default Timeline Phases</CardTitle></CardHeader>
+              <CardContent>
+                <RichTextEditor
+                  value={timelineToHtml(value.timeline_phases)}
+                  onChange={(html) => set("timeline_phases", setListFieldHtml(html))}
+                  placeholder="List timeline phases as bullets, e.g. Kickoff – Requirements review – 1 week"
+                />
+                {addImageButton(() => {
+                  void addImageToHtml(
+                    timelineToHtml(value.timeline_phases),
+                    (nextHtml) => set("timeline_phases", setListFieldHtml(nextHtml)),
+                  );
+                }, timelineToHtml(value.timeline_phases))}
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader><CardTitle className="text-base">Custom Sections</CardTitle></CardHeader>
