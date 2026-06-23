@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { authRequired, fetchProfile, signInWithPassword } from "@/lib/auth-session";
+import { authRequired, fetchProfileWithRetry, signInWithPassword } from "@/lib/auth-session";
 import { mustChangePassword } from "@/lib/auth-password";
 import { publicAsset } from "@/lib/public-asset";
 import { PRIME_LOGO_ALT } from "@/lib/proposal-header-footer.constants";
@@ -30,7 +30,7 @@ function AuthLoginPage() {
     try {
       const { user } = await signInWithPassword(email.trim(), password);
       if (!user) throw new Error("Login failed");
-      const profile = await fetchProfile(user.id);
+      const profile = await fetchProfileWithRetry(user.id);
       if (!profile) {
         await import("@/integrations/supabase/client").then(({ supabase }) => supabase.auth.signOut());
         toast.error("Account not provisioned — contact your admin");

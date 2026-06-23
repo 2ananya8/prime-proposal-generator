@@ -116,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           bindAuthSessionToPage();
         }
         if (event === "SIGNED_IN" && nextSession) {
+          // Bind before policy check — signInWithPassword may not have run yet when this fires.
+          bindAuthSessionToPage();
           scheduleExpiryCheck();
         }
         if (event === "SIGNED_OUT" && expiryTimer) {
