@@ -74,7 +74,7 @@ Set `SUPABASE_SERVICE_ROLE_KEY` in **Supabase Dashboard → Edge Functions → S
 
 | Flow | How it works |
 |------|----------------|
-| **First sign-in** | Admin-created users get a temporary password and are prompted to set a new one before using the app. |
+| **First sign-in** | Admin-created users get a temporary password; `profiles.must_change_password` forces **Set your password** before any other page. |
 | **Change password** | Signed-in users: sidebar → **Change password** (`/account/password`). |
 | **Forgot password** | Sign-in page → **Forgot password?** → email reset link → `/auth/reset-password`. |
 
@@ -98,6 +98,12 @@ for links that work on any device/browser.
 | **User** | Create services/proposals; edit/delete only own; view and download all proposals |
 
 Additional users are added by the admin under **Users** in the sidebar (email + temporary password). They must choose a new password on first sign-in.
+
+If your database was created earlier, run `supabase/migrations/20260623120000_profiles_must_change_password.sql` in the SQL Editor. To flag an existing user:
+
+```sql
+UPDATE public.profiles SET must_change_password = true WHERE email = 'user@company.com';
+```
 
 ## Generated Files
 

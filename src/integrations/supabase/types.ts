@@ -19,18 +19,21 @@ export type Database = {
           id: string
           email: string
           role: string
+          must_change_password: boolean
           created_at: string
         }
         Insert: {
           id: string
           email: string
           role?: string
+          must_change_password?: boolean
           created_at?: string
         }
         Update: {
           id?: string
           email?: string
           role?: string
+          must_change_password?: boolean
           created_at?: string
         }
         Relationships: []

@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import type { AppProfile } from "./auth-session";
 import {
   bridgePkceVerifierToLocalStorage,
   clearPkceVerifierBridge,
@@ -14,7 +15,11 @@ export const MIN_PASSWORD_LENGTH = 8;
 
 export { RESET_LINK_VERIFY_TIMEOUT_MS };
 
-export function mustChangePassword(user: User | null | undefined): boolean {
+export function mustChangePassword(
+  user: User | null | undefined,
+  profile?: AppProfile | null,
+): boolean {
+  if (profile?.must_change_password === true) return true;
   return user?.user_metadata?.must_change_password === true;
 }
 
@@ -74,6 +79,8 @@ export async function updatePassword(newPassword: string) {
     data: { must_change_password: false },
   });
   if (error) throw error;
+  await supabase.rpc("clear_must_change_password");
+  await supabase.auth.refreshSession();
   return data;
 }
 

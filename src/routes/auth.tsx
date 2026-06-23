@@ -1,6 +1,6 @@
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { isLocalStorageMode } from "@/lib/app-config";
-import { authRequired, getAuthSession } from "@/lib/auth-session";
+import { authRequired, fetchProfile, getAuthSession } from "@/lib/auth-session";
 import { mustChangePassword } from "@/lib/auth-password";
 
 function isAuthPasswordFlowPath(pathname: string): boolean {
@@ -17,8 +17,9 @@ export const Route = createFileRoute("/auth")({
 
     const session = await getAuthSession();
     if (session) {
+      const profile = await fetchProfile(session.user.id);
       throw redirect({
-        to: mustChangePassword(session.user) ? "/account/password" : "/dashboard",
+        to: mustChangePassword(session.user, profile) ? "/account/password" : "/dashboard",
       });
     }
   },

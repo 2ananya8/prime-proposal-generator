@@ -37,7 +37,7 @@ function AuthLoginPage() {
         return;
       }
       toast.success("Signed in");
-      nav({ to: mustChangePassword(user) ? "/account/password" : "/dashboard" });
+      nav({ to: mustChangePassword(user, profile) ? "/account/password" : "/dashboard" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Sign in failed";
       toast.error(msg);

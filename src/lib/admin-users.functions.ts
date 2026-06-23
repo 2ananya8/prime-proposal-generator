@@ -72,6 +72,7 @@ export const adminCreateUserServer = createServerFn({ method: "POST" })
       id: userId,
       email,
       role: "user",
+      must_change_password: true,
     });
     if (profileError) {
       await adminClient.auth.admin.deleteUser(userId);

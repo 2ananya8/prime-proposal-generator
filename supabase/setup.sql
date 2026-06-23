@@ -52,8 +52,11 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
+  must_change_password BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT false;
 
 CREATE UNIQUE INDEX IF NOT EXISTS profiles_single_admin
   ON public.profiles (role) WHERE role = 'admin';
@@ -118,6 +121,19 @@ DROP POLICY IF EXISTS "profiles_select_own_or_admin" ON public.profiles;
 CREATE POLICY "profiles_select_own_or_admin" ON public.profiles
   FOR SELECT TO authenticated
   USING (id = auth.uid() OR public.is_admin());
+
+CREATE OR REPLACE FUNCTION public.clear_must_change_password()
+RETURNS void
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  UPDATE public.profiles
+  SET must_change_password = false
+  WHERE id = auth.uid();
+$$;
+
+GRANT EXECUTE ON FUNCTION public.clear_must_change_password() TO authenticated;
 
 DROP POLICY IF EXISTS "anon_all_services" ON public.services;
 DROP POLICY IF EXISTS "anon_all_proposals" ON public.proposals;

@@ -10,6 +10,7 @@ export type AppProfile = {
   id: string;
   email: string;
   role: "admin" | "user";
+  must_change_password: boolean;
   created_at: string;
 };
 
@@ -35,7 +36,7 @@ export async function fetchProfile(userId: string): Promise<AppProfile | null> {
   const supabase = await getSupabase();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, email, role, created_at")
+    .select("id, email, role, must_change_password, created_at")
     .eq("id", userId)
     .maybeSingle();
   if (error || !data) return null;

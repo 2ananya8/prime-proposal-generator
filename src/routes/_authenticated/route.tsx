@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet, Link, useRouterState, redirect } from "@tanstack/react-router";
 import { FileText, Wrench, LayoutDashboard, Users, LogOut, KeyRound } from "lucide-react";
 import { hasSupabaseConfig, isLocalStorageMode } from "@/lib/app-config";
-import { authRequired, getAuthSession } from "@/lib/auth-session";
+import { authRequired, fetchProfile, getAuthSession } from "@/lib/auth-session";
 import { mustChangePassword } from "@/lib/auth-password";
 import { useAuth, useAuthOptional } from "@/lib/auth";
 import { PRIME_LOGO_ALT } from "@/lib/proposal-header-footer.constants";
@@ -14,7 +14,8 @@ export const Route = createFileRoute("/_authenticated")({
     if (!authRequired()) return;
     const session = await getAuthSession();
     if (!session) throw redirect({ to: "/auth" });
-    if (mustChangePassword(session.user) && location.pathname !== "/account/password") {
+    const profile = await fetchProfile(session.user.id);
+    if (mustChangePassword(session.user, profile) && location.pathname !== "/account/password") {
       throw redirect({ to: "/account/password" });
     }
   },
@@ -25,7 +26,7 @@ function Shell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   const isProposalPreview = /\/proposals\/[^/]+\/preview$/.test(path);
   const auth = useAuthOptional();
-  const passwordChangeRequired = mustChangePassword(auth?.user);
+  const passwordChangeRequired = mustChangePassword(auth?.user, auth?.profile);
 
   if (isProposalPreview || passwordChangeRequired) {
     return (

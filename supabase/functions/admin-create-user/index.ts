@@ -52,6 +52,7 @@ Deno.serve(async (req) => {
     id: userId,
     email,
     role: "user",
+    must_change_password: true,
   });
 
   if (profileError) {

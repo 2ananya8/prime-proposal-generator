@@ -21,7 +21,7 @@ export const Route = createFileRoute("/_authenticated/account/password")({
 function AccountPasswordPage() {
   const nav = useNavigate();
   const auth = useAuth();
-  const forced = mustChangePassword(auth.user);
+  const forced = mustChangePassword(auth.user, auth.profile);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
