@@ -2,6 +2,10 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
 import { getSupabaseAnonKey, getSupabaseUrl } from "@/lib/app-config";
+import { restorePkceVerifierFromBridgeIfNeeded } from "@/lib/auth-pkce-bridge";
+
+// Must run before createClient so email reset links (?code=) work in a new tab.
+restorePkceVerifierFromBridgeIfNeeded();
 
 function createSupabaseClient() {
   const SUPABASE_URL = getSupabaseUrl();

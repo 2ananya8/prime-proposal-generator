@@ -1,5 +1,9 @@
 import type { User } from "@supabase/supabase-js";
 import {
+  bridgePkceVerifierToLocalStorage,
+  clearPkceVerifierBridge,
+} from "./auth-pkce-bridge";
+import {
   RESET_LINK_VERIFY_TIMEOUT_MS,
   beginPasswordRecoveryFlow,
   bindAuthSessionToPage,
@@ -60,6 +64,7 @@ export async function requestPasswordReset(email: string) {
     redirectTo,
   });
   if (error) throw error;
+  bridgePkceVerifierToLocalStorage();
 }
 
 export async function updatePassword(newPassword: string) {
@@ -75,6 +80,7 @@ export async function updatePassword(newPassword: string) {
 function activateRecoverySession(): true {
   beginPasswordRecoveryFlow();
   bindAuthSessionToPage();
+  clearPkceVerifierBridge();
   return true;
 }
 
@@ -96,6 +102,7 @@ export async function establishPasswordRecoverySession(): Promise<boolean> {
   if (code) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) throw error;
+    window.history.replaceState({}, document.title, window.location.pathname);
     return activateRecoverySession();
   }
 

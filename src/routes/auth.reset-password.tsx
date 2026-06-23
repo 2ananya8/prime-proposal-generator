@@ -84,7 +84,7 @@ function ResetPasswordPage() {
             <CardTitle>Choose a new password</CardTitle>
             <CardDescription>
               {invalid
-                ? "This reset link is invalid or has expired. Request a new one below."
+                ? "This reset link is invalid or has expired. Request a new link from the same browser where you asked for the reset, then open the email promptly."
                 : ready
                   ? "Enter and confirm your new password."
                   : `Verifying your reset link… (up to ${verifySeconds}s)`}

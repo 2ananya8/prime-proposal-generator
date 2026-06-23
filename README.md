@@ -82,6 +82,8 @@ Supabase must have **email delivery** configured (built-in or custom SMTP) for r
 
 In **Authentication → Providers → Email**, set **OTP expiry** to at least **60 seconds** (3600 recommended) so reset links stay valid long enough to open.
 
+When requesting a reset, use the **same browser** you will open the email link in (or request a fresh link after switching browsers).
+
 ### Roles
 
 | Role | Capabilities |
