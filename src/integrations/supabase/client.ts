@@ -22,7 +22,8 @@ function createSupabaseClient() {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
-      flowType: "pkce",
+      // Implicit flow: recovery emails use URL hash tokens, which work when opened from email in a new tab.
+      flowType: "implicit",
     },
   });
 }

@@ -84,6 +84,12 @@ In **Authentication → Providers → Email**, set **OTP expiry** to at least **
 
 When requesting a reset, use the **same browser** you will open the email link in (or request a fresh link after switching browsers).
 
+New reset emails use a URL **hash** token (not `?code=`) so they work when opened from email in a new tab. Request a fresh reset after deploying this update.
+
+Optional — **Supabase → Authentication → Email Templates → Reset password**: set the link to  
+`{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery`  
+for links that work on any device/browser.
+
 ### Roles
 
 | Role | Capabilities |

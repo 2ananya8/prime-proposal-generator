@@ -84,6 +84,21 @@ function activateRecoverySession(): true {
   return true;
 }
 
+function hasRecoveryHash(): boolean {
+  if (!window.location.hash.startsWith("#")) return false;
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  return hash.get("type") === "recovery" && Boolean(hash.get("access_token"));
+}
+
+function paramsHasRecoveryCode(): boolean {
+  return new URLSearchParams(window.location.search).has("code");
+}
+
+function clearRecoveryHashFromUrl(): void {
+  if (!hasRecoveryHash()) return;
+  window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+}
+
 /** Parse recovery link (PKCE code, token hash, or hash tokens) and establish a session. */
 export async function establishPasswordRecoverySession(): Promise<boolean> {
   const { supabase } = await import("@/integrations/supabase/client");
@@ -95,7 +110,21 @@ export async function establishPasswordRecoverySession(): Promise<boolean> {
   if (tokenHash && queryType === "recovery") {
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type: "recovery" });
     if (error) throw error;
+    window.history.replaceState({}, document.title, window.location.pathname);
     return activateRecoverySession();
+  }
+
+  if (hasRecoveryHash()) {
+    for (let attempt = 0; attempt < 30; attempt++) {
+      await new Promise((resolve) => window.setTimeout(resolve, 100));
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      if (data.session) {
+        clearRecoveryHashFromUrl();
+        return activateRecoverySession();
+      }
+    }
+    return false;
   }
 
   const code = params.get("code");
@@ -104,16 +133,6 @@ export async function establishPasswordRecoverySession(): Promise<boolean> {
     if (error) throw error;
     window.history.replaceState({}, document.title, window.location.pathname);
     return activateRecoverySession();
-  }
-
-  const hash = window.location.hash.startsWith("#")
-    ? new URLSearchParams(window.location.hash.slice(1))
-    : null;
-  if (hash?.get("access_token") && hash.get("type") === "recovery") {
-    await new Promise((resolve) => window.setTimeout(resolve, 100));
-    const { data, error } = await supabase.auth.getSession();
-    if (error) throw error;
-    if (data.session) return activateRecoverySession();
   }
 
   const { data } = await supabase.auth.getSession();
@@ -149,7 +168,13 @@ export async function waitForPasswordRecoverySession(
     };
 
     const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "PASSWORD_RECOVERY" && session) {
+      const fromRecoveryUrl = hasRecoveryHash() || paramsHasRecoveryCode();
+      if (
+        session &&
+        (event === "PASSWORD_RECOVERY" ||
+          ((event === "INITIAL_SESSION" || event === "SIGNED_IN") && fromRecoveryUrl))
+      ) {
+        clearRecoveryHashFromUrl();
         activateRecoverySession();
         finish(true);
       }
