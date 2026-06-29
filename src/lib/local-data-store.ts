@@ -12,6 +12,7 @@ export type LocalService = ServiceFormValue & {
 
 export type LocalProposal = {
   id: string;
+  proposal_type: "standard" | "two_page";
   client_name: string;
   client_logo: string | null;
   client_website: string | null;
@@ -96,6 +97,7 @@ export const localStore = {
   createProposal(input: Omit<LocalProposal, "id" | "created_at" | "updated_at" | "generated_docx_path" | "generated_pdf_path" | "created_by">): LocalProposal {
     const row: LocalProposal = {
       ...input,
+      proposal_type: input.proposal_type ?? "standard",
       client_logo: input.client_logo ?? null,
       id: crypto.randomUUID(),
       generated_docx_path: null,
@@ -121,6 +123,16 @@ export const localStore = {
     const i = rows.findIndex((p) => p.id === id);
     if (i < 0) throw new Error("Proposal not found");
     rows[i] = { ...rows[i], client_logo, updated_at: now() };
+    write(PROPOSALS_KEY, rows);
+  },
+  updateProposalFields(
+    id: string,
+    patch: Partial<Pick<LocalProposal, "client_name" | "executive_summary" | "commercials">>,
+  ) {
+    const rows = read<LocalProposal>(PROPOSALS_KEY);
+    const i = rows.findIndex((p) => p.id === id);
+    if (i < 0) throw new Error("Proposal not found");
+    rows[i] = { ...rows[i], ...patch, updated_at: now() };
     write(PROPOSALS_KEY, rows);
   },
   deleteProposal(id: string) {

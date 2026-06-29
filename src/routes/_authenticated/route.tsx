@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated")({
 
 function Shell() {
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const isProposalPreview = /\/proposals\/[^/]+\/preview$/.test(path);
+  const isProposalPreview = /\/(proposals|two-page-proposals)\/[^/]+\/preview$/.test(path);
   const auth = useAuthOptional();
   const passwordChangeRequired = mustChangePassword(auth?.user, auth?.profile);
 
@@ -61,6 +61,7 @@ function Shell() {
           {item("/dashboard", "Dashboard", LayoutDashboard)}
           {item("/services", "Services", Wrench)}
           {item("/proposals", "Proposals", FileText)}
+          {item("/two-page-proposals", "2-page Proposal", FileText)}
           {auth?.isAdmin ? item("/admin/users", "Users", Users) : null}
         </nav>
         {authRequired() && auth?.profile && !passwordChangeRequired && (

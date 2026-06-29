@@ -53,6 +53,7 @@ export type Database = {
           generated_pdf_path: string | null
           id: string
           payment_milestones: Json | null
+          proposal_type: string
           proposal_date: string
           scope_details: Json | null
           service_id: string | null
@@ -73,6 +74,7 @@ export type Database = {
           generated_pdf_path?: string | null
           id?: string
           payment_milestones?: Json | null
+          proposal_type?: string
           proposal_date?: string
           scope_details?: Json | null
           service_id?: string | null
@@ -93,6 +95,7 @@ export type Database = {
           generated_pdf_path?: string | null
           id?: string
           payment_milestones?: Json | null
+          proposal_type?: string
           proposal_date?: string
           scope_details?: Json | null
           service_id?: string | null

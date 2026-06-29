@@ -204,7 +204,7 @@ function AuthLoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@primeinfoserv.com"
+                placeholder="you@gmail.com"
               />
               {showSsoHint ? (
                 <p className="text-xs text-muted-foreground">

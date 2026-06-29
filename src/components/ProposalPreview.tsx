@@ -101,6 +101,41 @@ function CustomSectionBody({ content }: { content: string }) {
 }
 
 export function ProposalPreview({ data }: { data: ProposalPreviewData }) {
+  if (data.proposalType === "two_page") {
+    let sectionNum = 0;
+    const next = (title: string, body: ReactNode) => {
+      sectionNum += 1;
+      return <Section n={sectionNum} title={title}>{body}</Section>;
+    };
+    return (
+      <article
+        className="proposal-document bg-white text-gray-900 shadow-xl overflow-hidden print:shadow-none"
+        style={{ fontFamily: PROPOSAL_FONT_STACK }}
+      >
+        <div className="proposal-content-pages relative">
+          <ProposalPageWatermark />
+          <ProposalPageHeader data={data} />
+          <div className="proposal-content-body relative z-[1] px-10 py-8">
+            {next("Letter", (
+              <Body>
+                <ProposalRichText content={data.executiveSummary} />
+              </Body>
+            ))}
+            {next("Commercials", (
+              <div className="space-y-3">
+                <CommercialsTable commercials={data.commercials} />
+                {plainTextField(data.commercials.notes) ? (
+                  <ProposalRichText content={data.commercials.notes || ""} className="text-[13px] text-gray-600" />
+                ) : null}
+              </div>
+            ))}
+          </div>
+          <ProposalPageFooter />
+        </div>
+      </article>
+    );
+  }
+
   const { clientName, service, commercials } = data;
   const content = getProposalSectionContent(data);
   const applications = getApplicationsLabel(data.scope);

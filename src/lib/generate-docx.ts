@@ -256,6 +256,44 @@ function buildTable(headers: string[], rows: string[][], totalWidth = 9360) {
 }
 
 export async function generateProposalDocx(input: ProposalPreviewData): Promise<Uint8Array> {
+  if (input.proposalType === "two_page") {
+    const sections: (Paragraph | Table)[] = [];
+    sections.push(h("1. Letter", 1));
+    sections.push(...richTextBlocks(input.executiveSummary || ""));
+    sections.push(h("2. Commercials", 1));
+    sections.push(buildCommercialsTable(input.commercials));
+    if (plainTextField(input.commercials.notes)) {
+      sections.push(...richTextBlocks(input.commercials.notes || ""));
+    }
+
+    const { footer, bottomMargin, footerDistance } = buildDocxContentFooter();
+    const doc = new Document({
+      creator: "Prime Infoserv",
+      title: `2-page Proposal — ${input.clientName}`,
+      styles: { default: { document: { run: { font: PROPOSAL_FONT_NAME, size: 22 } } } },
+      sections: [{
+        properties: {
+          page: {
+            size: { width: 12240, height: 15840, orientation: PageOrientation.PORTRAIT },
+            margin: {
+              top: docxContentTopMargin(),
+              right: 1080,
+              bottom: bottomMargin,
+              left: 1080,
+              header: HEADER_DISTANCE_TWIPS,
+              footer: footerDistance,
+            },
+          },
+        },
+        headers: { default: buildDocxContentHeader(input) },
+        footers: { default: footer },
+        children: sections,
+      }],
+    });
+    const arrayBuffer = await Packer.toArrayBuffer(doc);
+    return new Uint8Array(arrayBuffer);
+  }
+
   const { clientName, service, commercials } = input;
   const cover = getCoverFields(input);
   const content = getProposalSectionContent(input);

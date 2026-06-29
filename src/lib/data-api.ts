@@ -108,10 +108,11 @@ export async function deleteService(id: string) {
 }
 
 export type CreateProposalInput = {
+  proposal_type?: "standard" | "two_page";
   client_name: string;
   client_logo?: string | null;
   client_website: string | null;
-  service_id: string;
+  service_id: string | null;
   proposal_date: string;
   client_research: unknown;
   executive_summary: string;
@@ -122,12 +123,13 @@ export type CreateProposalInput = {
   extra_fields: unknown[];
 };
 
-export async function listProposals() {
+export async function listProposals(proposalType: "standard" | "two_page" = "standard") {
   if (isLocalStorageMode()) {
-    return localStore.listProposals().map((p) => {
+    return localStore.listProposals().filter((p) => (p.proposal_type ?? "standard") === proposalType).map((p) => {
       const service = p.service_id ? localStore.getService(p.service_id) : null;
       return {
         id: p.id,
+        proposal_type: p.proposal_type ?? "standard",
         client_name: p.client_name,
         proposal_date: p.proposal_date,
         created_by: p.created_by,
@@ -139,7 +141,8 @@ export async function listProposals() {
   const supabase = await sb();
   const { data, error } = await supabase
     .from("proposals")
-    .select("id, client_name, proposal_date, created_by, service:services(name, short_code), generated_pdf_path")
+    .select("id, proposal_type, client_name, proposal_date, created_by, service:services(name, short_code), generated_pdf_path")
+    .eq("proposal_type", proposalType)
     .order("created_at", { ascending: false });
   if (error) throw new Error(formatDbError(error));
   return data ?? [];
@@ -147,7 +150,7 @@ export async function listProposals() {
 
 export async function listRecentProposals() {
   if (isLocalStorageMode()) {
-    return localStore.listProposals().slice(0, 5).map((p) => {
+    return localStore.listProposals().filter((p) => (p.proposal_type ?? "standard") === "standard").slice(0, 5).map((p) => {
       const service = p.service_id ? localStore.getService(p.service_id) : null;
       return {
         id: p.id,
@@ -162,6 +165,7 @@ export async function listRecentProposals() {
   const { data, error } = await supabase
     .from("proposals")
     .select("id, client_name, proposal_date, created_by, service:services(name)")
+    .eq("proposal_type", "standard")
     .order("created_at", { ascending: false })
     .limit(5);
   if (error) throw new Error(formatDbError(error));
@@ -188,11 +192,16 @@ function assertValidClientLogo(client_logo: string | null | undefined) {
 
 export async function createProposal(input: CreateProposalInput) {
   assertValidClientLogo(input.client_logo);
-  if (isLocalStorageMode()) return localStore.createProposal(input);
+  const proposalType = input.proposal_type ?? "standard";
+  if (isLocalStorageMode()) return localStore.createProposal({ ...input, proposal_type: proposalType });
   const supabase = await sb();
   const userId = await getCurrentUserId();
   if (!userId) throw new Error("You must be signed in to create a proposal.");
-  const { data, error } = await supabase.from("proposals").insert({ ...input, created_by: userId }).select("id").single();
+  const { data, error } = await supabase
+    .from("proposals")
+    .insert({ ...input, proposal_type: proposalType, created_by: userId })
+    .select("id")
+    .single();
   if (error) throw new Error(formatDbError(error));
   return data!;
 }
@@ -209,6 +218,23 @@ export async function updateProposalClientLogo(id: string, client_logo: string |
   if (isLocalStorageMode()) return localStore.updateProposalClientLogo(id, client_logo);
   const supabase = await sb();
   const { error } = await supabase.from("proposals").update({ client_logo }).eq("id", id);
+  if (error) throw new Error(formatDbError(error));
+}
+
+export async function updateProposal(
+  id: string,
+  patch: {
+    client_name?: string;
+    executive_summary?: string | null;
+    commercials?: Record<string, unknown>;
+  },
+) {
+  if (isLocalStorageMode()) {
+    localStore.updateProposalFields(id, patch);
+    return;
+  }
+  const supabase = await sb();
+  const { error } = await supabase.from("proposals").update(patch).eq("id", id);
   if (error) throw new Error(formatDbError(error));
 }
 

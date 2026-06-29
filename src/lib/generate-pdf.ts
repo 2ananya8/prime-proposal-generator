@@ -459,6 +459,26 @@ function drawFooters(ctx: Ctx) {
 }
 
 export async function generateProposalPdf(input: ProposalPreviewData): Promise<Uint8Array> {
+  if (input.proposalType === "two_page") {
+    const pdf = await PDFDocument.create();
+    const { font, bold } = await embedProposalPdfFonts(pdf);
+    const chrome = await preparePdfChrome(pdf, input);
+    const ctx: Ctx = {
+      pdf, font, bold, pages: [], page: null as any, y: 0,
+      clientName: input.clientName, chrome, coverPageCount: 0,
+    };
+    newPage(ctx);
+    heading(ctx, "1. Letter");
+    drawRichText(ctx, input.executiveSummary || "");
+    heading(ctx, "2. Commercials");
+    drawCommercialsTable(ctx, input.commercials);
+    if (plainTextField(input.commercials.notes)) {
+      drawRichText(ctx, input.commercials.notes || "");
+    }
+    drawFooters(ctx);
+    return await pdf.save();
+  }
+
   const pdf = await PDFDocument.create();
   const { font, bold } = await embedProposalPdfFonts(pdf);
   const chrome = await preparePdfChrome(pdf, input);

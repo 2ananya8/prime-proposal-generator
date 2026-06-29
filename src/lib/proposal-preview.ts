@@ -34,6 +34,7 @@ export function mergeServiceContent(service: Record<string, unknown>, overrides?
 }
 
 export type ProposalPreviewData = {
+  proposalType: "standard" | "two_page";
   clientName: string;
   clientLogo?: string | null;
   proposalDate: string;
@@ -74,6 +75,36 @@ export type ProposalPreviewData = {
 };
 
 export function buildProposalPreview(proposal: any): ProposalPreviewData | null {
+  const proposalType = (proposal.proposal_type as "standard" | "two_page" | undefined) ?? "standard";
+  if (proposalType === "two_page") {
+    const commercials = normalizeCommercials(proposal.commercials as any);
+    const clientName = String(proposal.client_name ?? "");
+    return {
+      proposalType,
+      clientName,
+      clientLogo: proposal.client_logo ?? null,
+      proposalDate: proposal.proposal_date,
+      service: {
+        name: "2-page Proposal",
+        service_type: "two_page",
+      },
+      executiveSummary: fillClientName(proposal.executive_summary || "", clientName),
+      clientResearch: null,
+      scope: { fields: [], project_overview: "" },
+      timeline: [],
+      commercials: {
+        ...commercials,
+        line_items: commercials.line_items.map((li) => ({
+          ...li,
+          description: fillClientName(li.description, clientName),
+        })),
+        notes: fillClientName(commercials.notes, clientName),
+      },
+      milestones: [],
+      extras: [],
+    };
+  }
+
   const service = proposal.service;
   if (!service) return null;
   const commercials = normalizeCommercials(proposal.commercials as any);
@@ -117,6 +148,7 @@ export function buildProposalPreview(proposal: any): ProposalPreviewData | null 
     : [];
 
   return {
+    proposalType,
     clientName,
     clientLogo: proposal.client_logo ?? null,
     proposalDate: proposal.proposal_date,
@@ -182,6 +214,7 @@ export function buildWizardPreviewData(input: {
         })))
     : [];
   return {
+    proposalType: "standard",
     clientName,
     clientLogo: input.clientLogo ?? null,
     proposalDate: input.proposalDate,

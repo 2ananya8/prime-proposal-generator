@@ -40,12 +40,16 @@ CREATE TABLE IF NOT EXISTS public.proposals (
   extra_fields JSONB DEFAULT '[]'::jsonb,
   generated_docx_path TEXT,
   generated_pdf_path TEXT,
+  proposal_type TEXT NOT NULL DEFAULT 'standard' CHECK (proposal_type IN ('standard', 'two_page')),
   created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE public.proposals ADD COLUMN IF NOT EXISTS client_logo TEXT;
+ALTER TABLE public.proposals
+  ADD COLUMN IF NOT EXISTS proposal_type TEXT NOT NULL DEFAULT 'standard'
+  CHECK (proposal_type IN ('standard', 'two_page'));
 
 -- Profiles (app roles)
 CREATE TABLE IF NOT EXISTS public.profiles (

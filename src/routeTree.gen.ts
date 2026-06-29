@@ -16,14 +16,18 @@ import { Route as AuthIndexRouteImport } from './routes/auth.index'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth.forgot-password'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedTwoPageProposalsIndexRouteImport } from './routes/_authenticated/two-page-proposals.index'
 import { Route as AuthenticatedServicesIndexRouteImport } from './routes/_authenticated/services.index'
 import { Route as AuthenticatedProposalsIndexRouteImport } from './routes/_authenticated/proposals.index'
+import { Route as AuthenticatedTwoPageProposalsNewRouteImport } from './routes/_authenticated/two-page-proposals.new'
+import { Route as AuthenticatedTwoPageProposalsIdRouteImport } from './routes/_authenticated/two-page-proposals.$id'
 import { Route as AuthenticatedServicesNewRouteImport } from './routes/_authenticated/services.new'
 import { Route as AuthenticatedServicesIdRouteImport } from './routes/_authenticated/services.$id'
 import { Route as AuthenticatedProposalsNewRouteImport } from './routes/_authenticated/proposals.new'
 import { Route as AuthenticatedProposalsIdRouteImport } from './routes/_authenticated/proposals.$id'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAccountPasswordRouteImport } from './routes/_authenticated/account.password'
+import { Route as AuthenticatedTwoPageProposalsIdPreviewRouteImport } from './routes/_authenticated/two-page-proposals.$id_.preview'
 import { Route as AuthenticatedProposalsIdPreviewRouteImport } from './routes/_authenticated/proposals.$id_.preview'
 
 const AuthRoute = AuthRouteImport.update({
@@ -60,6 +64,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedTwoPageProposalsIndexRoute =
+  AuthenticatedTwoPageProposalsIndexRouteImport.update({
+    id: '/two-page-proposals/',
+    path: '/two-page-proposals/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedServicesIndexRoute =
   AuthenticatedServicesIndexRouteImport.update({
     id: '/services/',
@@ -70,6 +80,18 @@ const AuthenticatedProposalsIndexRoute =
   AuthenticatedProposalsIndexRouteImport.update({
     id: '/proposals/',
     path: '/proposals/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTwoPageProposalsNewRoute =
+  AuthenticatedTwoPageProposalsNewRouteImport.update({
+    id: '/two-page-proposals/new',
+    path: '/two-page-proposals/new',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedTwoPageProposalsIdRoute =
+  AuthenticatedTwoPageProposalsIdRouteImport.update({
+    id: '/two-page-proposals/$id',
+    path: '/two-page-proposals/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedServicesNewRoute =
@@ -106,6 +128,12 @@ const AuthenticatedAccountPasswordRoute =
     path: '/account/password',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedTwoPageProposalsIdPreviewRoute =
+  AuthenticatedTwoPageProposalsIdPreviewRouteImport.update({
+    id: '/two-page-proposals/$id_/preview',
+    path: '/two-page-proposals/$id/preview',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProposalsIdPreviewRoute =
   AuthenticatedProposalsIdPreviewRouteImport.update({
     id: '/proposals/$id_/preview',
@@ -126,9 +154,13 @@ export interface FileRoutesByFullPath {
   '/proposals/new': typeof AuthenticatedProposalsNewRoute
   '/services/$id': typeof AuthenticatedServicesIdRoute
   '/services/new': typeof AuthenticatedServicesNewRoute
+  '/two-page-proposals/$id': typeof AuthenticatedTwoPageProposalsIdRoute
+  '/two-page-proposals/new': typeof AuthenticatedTwoPageProposalsNewRoute
   '/proposals/': typeof AuthenticatedProposalsIndexRoute
   '/services/': typeof AuthenticatedServicesIndexRoute
+  '/two-page-proposals/': typeof AuthenticatedTwoPageProposalsIndexRoute
   '/proposals/$id/preview': typeof AuthenticatedProposalsIdPreviewRoute
+  '/two-page-proposals/$id/preview': typeof AuthenticatedTwoPageProposalsIdPreviewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -142,9 +174,13 @@ export interface FileRoutesByTo {
   '/proposals/new': typeof AuthenticatedProposalsNewRoute
   '/services/$id': typeof AuthenticatedServicesIdRoute
   '/services/new': typeof AuthenticatedServicesNewRoute
+  '/two-page-proposals/$id': typeof AuthenticatedTwoPageProposalsIdRoute
+  '/two-page-proposals/new': typeof AuthenticatedTwoPageProposalsNewRoute
   '/proposals': typeof AuthenticatedProposalsIndexRoute
   '/services': typeof AuthenticatedServicesIndexRoute
+  '/two-page-proposals': typeof AuthenticatedTwoPageProposalsIndexRoute
   '/proposals/$id/preview': typeof AuthenticatedProposalsIdPreviewRoute
+  '/two-page-proposals/$id/preview': typeof AuthenticatedTwoPageProposalsIdPreviewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -161,9 +197,13 @@ export interface FileRoutesById {
   '/_authenticated/proposals/new': typeof AuthenticatedProposalsNewRoute
   '/_authenticated/services/$id': typeof AuthenticatedServicesIdRoute
   '/_authenticated/services/new': typeof AuthenticatedServicesNewRoute
+  '/_authenticated/two-page-proposals/$id': typeof AuthenticatedTwoPageProposalsIdRoute
+  '/_authenticated/two-page-proposals/new': typeof AuthenticatedTwoPageProposalsNewRoute
   '/_authenticated/proposals/': typeof AuthenticatedProposalsIndexRoute
   '/_authenticated/services/': typeof AuthenticatedServicesIndexRoute
+  '/_authenticated/two-page-proposals/': typeof AuthenticatedTwoPageProposalsIndexRoute
   '/_authenticated/proposals/$id_/preview': typeof AuthenticatedProposalsIdPreviewRoute
+  '/_authenticated/two-page-proposals/$id_/preview': typeof AuthenticatedTwoPageProposalsIdPreviewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -180,9 +220,13 @@ export interface FileRouteTypes {
     | '/proposals/new'
     | '/services/$id'
     | '/services/new'
+    | '/two-page-proposals/$id'
+    | '/two-page-proposals/new'
     | '/proposals/'
     | '/services/'
+    | '/two-page-proposals/'
     | '/proposals/$id/preview'
+    | '/two-page-proposals/$id/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -196,9 +240,13 @@ export interface FileRouteTypes {
     | '/proposals/new'
     | '/services/$id'
     | '/services/new'
+    | '/two-page-proposals/$id'
+    | '/two-page-proposals/new'
     | '/proposals'
     | '/services'
+    | '/two-page-proposals'
     | '/proposals/$id/preview'
+    | '/two-page-proposals/$id/preview'
   id:
     | '__root__'
     | '/'
@@ -214,9 +262,13 @@ export interface FileRouteTypes {
     | '/_authenticated/proposals/new'
     | '/_authenticated/services/$id'
     | '/_authenticated/services/new'
+    | '/_authenticated/two-page-proposals/$id'
+    | '/_authenticated/two-page-proposals/new'
     | '/_authenticated/proposals/'
     | '/_authenticated/services/'
+    | '/_authenticated/two-page-proposals/'
     | '/_authenticated/proposals/$id_/preview'
+    | '/_authenticated/two-page-proposals/$id_/preview'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -276,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/two-page-proposals/': {
+      id: '/_authenticated/two-page-proposals/'
+      path: '/two-page-proposals'
+      fullPath: '/two-page-proposals/'
+      preLoaderRoute: typeof AuthenticatedTwoPageProposalsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/services/': {
       id: '/_authenticated/services/'
       path: '/services'
@@ -288,6 +347,20 @@ declare module '@tanstack/react-router' {
       path: '/proposals'
       fullPath: '/proposals/'
       preLoaderRoute: typeof AuthenticatedProposalsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/two-page-proposals/new': {
+      id: '/_authenticated/two-page-proposals/new'
+      path: '/two-page-proposals/new'
+      fullPath: '/two-page-proposals/new'
+      preLoaderRoute: typeof AuthenticatedTwoPageProposalsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/two-page-proposals/$id': {
+      id: '/_authenticated/two-page-proposals/$id'
+      path: '/two-page-proposals/$id'
+      fullPath: '/two-page-proposals/$id'
+      preLoaderRoute: typeof AuthenticatedTwoPageProposalsIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/services/new': {
@@ -332,6 +405,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountPasswordRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/two-page-proposals/$id_/preview': {
+      id: '/_authenticated/two-page-proposals/$id_/preview'
+      path: '/two-page-proposals/$id/preview'
+      fullPath: '/two-page-proposals/$id/preview'
+      preLoaderRoute: typeof AuthenticatedTwoPageProposalsIdPreviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/proposals/$id_/preview': {
       id: '/_authenticated/proposals/$id_/preview'
       path: '/proposals/$id/preview'
@@ -350,9 +430,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProposalsNewRoute: typeof AuthenticatedProposalsNewRoute
   AuthenticatedServicesIdRoute: typeof AuthenticatedServicesIdRoute
   AuthenticatedServicesNewRoute: typeof AuthenticatedServicesNewRoute
+  AuthenticatedTwoPageProposalsIdRoute: typeof AuthenticatedTwoPageProposalsIdRoute
+  AuthenticatedTwoPageProposalsNewRoute: typeof AuthenticatedTwoPageProposalsNewRoute
   AuthenticatedProposalsIndexRoute: typeof AuthenticatedProposalsIndexRoute
   AuthenticatedServicesIndexRoute: typeof AuthenticatedServicesIndexRoute
+  AuthenticatedTwoPageProposalsIndexRoute: typeof AuthenticatedTwoPageProposalsIndexRoute
   AuthenticatedProposalsIdPreviewRoute: typeof AuthenticatedProposalsIdPreviewRoute
+  AuthenticatedTwoPageProposalsIdPreviewRoute: typeof AuthenticatedTwoPageProposalsIdPreviewRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -363,9 +447,15 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProposalsNewRoute: AuthenticatedProposalsNewRoute,
   AuthenticatedServicesIdRoute: AuthenticatedServicesIdRoute,
   AuthenticatedServicesNewRoute: AuthenticatedServicesNewRoute,
+  AuthenticatedTwoPageProposalsIdRoute: AuthenticatedTwoPageProposalsIdRoute,
+  AuthenticatedTwoPageProposalsNewRoute: AuthenticatedTwoPageProposalsNewRoute,
   AuthenticatedProposalsIndexRoute: AuthenticatedProposalsIndexRoute,
   AuthenticatedServicesIndexRoute: AuthenticatedServicesIndexRoute,
+  AuthenticatedTwoPageProposalsIndexRoute:
+    AuthenticatedTwoPageProposalsIndexRoute,
   AuthenticatedProposalsIdPreviewRoute: AuthenticatedProposalsIdPreviewRoute,
+  AuthenticatedTwoPageProposalsIdPreviewRoute:
+    AuthenticatedTwoPageProposalsIdPreviewRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
