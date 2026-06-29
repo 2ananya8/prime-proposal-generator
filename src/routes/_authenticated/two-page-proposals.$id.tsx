@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/RichTextEditor";
-import { lineItemAmount, normalizeCommercialLineItems, commercialsSubtotal, type CommercialLineItem } from "@/lib/commercials-line-item";
+import { lineItemAmount, normalizeCommercialLineItems, normalizeCommercials, commercialsSubtotal, type CommercialLineItem } from "@/lib/commercials-line-item";
 import { deleteProposal, getProposal, updateProposal } from "@/lib/data-api";
 import { buildProposalPreview } from "@/lib/proposal-preview";
 import { generateProposalFilesLocally } from "@/lib/generate-proposal-files";
@@ -35,7 +35,7 @@ function TwoPageProposalDetail() {
   const editable = !!p && (!authRequired() || canEditProposal(auth.profile, auth.user?.id, p));
 
   const commercialsRaw = useMemo(() => (p?.commercials as any) ?? {}, [p]);
-  const initialItems = useMemo(() => normalizeCommercialLineItems(commercialsRaw).line_items as CommercialLineItem[], [commercialsRaw]);
+  const initialItems = useMemo(() => normalizeCommercials(commercialsRaw).line_items, [commercialsRaw]);
   const [clientName, setClientName] = useState("");
   const [lineItems, setLineItems] = useState<CommercialLineItem[]>([]);
   const [gst, setGst] = useState(18);
