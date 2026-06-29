@@ -258,9 +258,8 @@ function buildTable(headers: string[], rows: string[][], totalWidth = 9360) {
 export async function generateProposalDocx(input: ProposalPreviewData): Promise<Uint8Array> {
   if (input.proposalType === "two_page") {
     const sections: (Paragraph | Table)[] = [];
-    sections.push(h("1. Letter", 1));
     sections.push(...richTextBlocks(input.executiveSummary || ""));
-    sections.push(h("2. Commercials", 1));
+    sections.push(new Paragraph({ pageBreakBefore: true }));
     sections.push(buildCommercialsTable(input.commercials));
     if (plainTextField(input.commercials.notes)) {
       sections.push(...richTextBlocks(input.commercials.notes || ""));

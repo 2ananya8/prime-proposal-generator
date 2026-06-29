@@ -468,9 +468,8 @@ export async function generateProposalPdf(input: ProposalPreviewData): Promise<U
       clientName: input.clientName, chrome, coverPageCount: 0,
     };
     newPage(ctx);
-    heading(ctx, "1. Letter");
     drawRichText(ctx, input.executiveSummary || "");
-    heading(ctx, "2. Commercials");
+    newPage(ctx);
     drawCommercialsTable(ctx, input.commercials);
     if (plainTextField(input.commercials.notes)) {
       drawRichText(ctx, input.commercials.notes || "");
