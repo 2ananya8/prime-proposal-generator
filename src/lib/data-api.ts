@@ -225,10 +225,12 @@ export async function updateProposal(
   id: string,
   patch: {
     client_name?: string;
+    client_logo?: string | null;
     executive_summary?: string | null;
     commercials?: Record<string, unknown>;
   },
 ) {
+  if (patch.client_logo !== undefined) assertValidClientLogo(patch.client_logo);
   if (isLocalStorageMode()) {
     localStore.updateProposalFields(id, patch);
     return;

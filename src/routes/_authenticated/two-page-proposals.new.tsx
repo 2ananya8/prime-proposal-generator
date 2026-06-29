@@ -12,6 +12,7 @@ import { CommercialsLineItemsEditor } from "@/components/CommercialsLineItemsEdi
 import { commercialsSubtotal, EMPTY_COMMERCIAL_LINE_ITEM, normalizeCommercialLineItems, type CommercialLineItem } from "@/lib/commercials-line-item";
 import { createProposal } from "@/lib/data-api";
 import { buildTwoPageLetter } from "@/lib/two-page-proposal";
+import { LOGO_ACCEPT, readLogoFileAsDataUrl } from "@/lib/image-upload";
 
 export const Route = createFileRoute("/_authenticated/two-page-proposals/new")({
   head: () => ({ meta: [{ title: "New 2-page proposal — Prime Infoserv" }] }),
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/two-page-proposals/new")({
 function NewTwoPageProposal() {
   const nav = useNavigate();
   const [clientName, setClientName] = useState("");
+  const [clientLogo, setClientLogo] = useState<string | null>(null);
   const [proposalDate, setProposalDate] = useState(new Date().toISOString().slice(0, 10));
   const [lineItems, setLineItems] = useState<CommercialLineItem[]>([{ ...EMPTY_COMMERCIAL_LINE_ITEM }]);
   const [gst, setGst] = useState(18);
@@ -40,7 +42,7 @@ function NewTwoPageProposal() {
       const data = await createProposal({
         proposal_type: "two_page",
         client_name: clientName.trim(),
-        client_logo: null,
+        client_logo: clientLogo,
         client_website: null,
         service_id: null,
         proposal_date: proposalDate,
@@ -74,6 +76,25 @@ function NewTwoPageProposal() {
           <div className="space-y-1">
             <Label>Client Name *</Label>
             <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="ACME Corp" />
+          </div>
+          <div className="space-y-1">
+            <Label>Client Logo (optional)</Label>
+            <Input
+              type="file"
+              accept={LOGO_ACCEPT}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return setClientLogo(null);
+                try {
+                  setClientLogo(await readLogoFileAsDataUrl(file));
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Invalid logo file");
+                  e.target.value = "";
+                }
+              }}
+            />
+            {clientLogo && <img src={clientLogo} alt="Client logo preview" className="mt-2 h-14 object-contain" />}
+            <p className="text-xs text-muted-foreground">PNG, JPG, or JPEG only (max 600 KB). Shown in the proposal header.</p>
           </div>
           <div className="space-y-1">
             <Label>Proposal Date</Label>

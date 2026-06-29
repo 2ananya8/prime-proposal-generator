@@ -127,7 +127,7 @@ export const localStore = {
   },
   updateProposalFields(
     id: string,
-    patch: Partial<Pick<LocalProposal, "client_name" | "executive_summary" | "commercials">>,
+    patch: Partial<Pick<LocalProposal, "client_name" | "client_logo" | "executive_summary" | "commercials">>,
   ) {
     const rows = read<LocalProposal>(PROPOSALS_KEY);
     const i = rows.findIndex((p) => p.id === id);

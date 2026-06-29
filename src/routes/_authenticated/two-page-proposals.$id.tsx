@@ -18,6 +18,7 @@ import { authRequired } from "@/lib/auth-session";
 import { buildTwoPageLetter } from "@/lib/two-page-proposal";
 import { CommercialsLineItemsEditor } from "@/components/CommercialsLineItemsEditor";
 import { ProposalRichText } from "@/components/ProposalRichText";
+import { LOGO_ACCEPT, readLogoFileAsDataUrl } from "@/lib/image-upload";
 
 export const Route = createFileRoute("/_authenticated/two-page-proposals/$id")({
   component: TwoPageProposalDetail,
@@ -37,6 +38,7 @@ function TwoPageProposalDetail() {
   const commercialsRaw = useMemo(() => (p?.commercials as any) ?? {}, [p]);
   const initialItems = useMemo(() => normalizeCommercials(commercialsRaw).line_items, [commercialsRaw]);
   const [clientName, setClientName] = useState("");
+  const [clientLogo, setClientLogo] = useState<string | null>(null);
   const [lineItems, setLineItems] = useState<CommercialLineItem[]>([]);
   const [gst, setGst] = useState(18);
   const [commNotes, setCommNotes] = useState("");
@@ -44,6 +46,7 @@ function TwoPageProposalDetail() {
   useEffect(() => {
     if (!p) return;
     setClientName(p.client_name);
+    setClientLogo(p.client_logo ?? null);
     setLineItems(initialItems);
     setGst(Number(commercialsRaw.gst_percent ?? 18));
     setCommNotes(String(commercialsRaw.notes ?? ""));
@@ -73,6 +76,7 @@ function TwoPageProposalDetail() {
     try {
       await updateProposal(id, {
         client_name: clientName.trim(),
+        client_logo: clientLogo,
         executive_summary: buildTwoPageLetter(clientName.trim()),
         commercials: { line_items: lineItemsCalc, gst_percent: gst, subtotal, gst_amount: gstAmount, total, notes: commNotes },
       });
@@ -90,6 +94,7 @@ function TwoPageProposalDetail() {
     const preview = buildProposalPreview({
       ...p,
       client_name: clientName.trim() || p.client_name,
+      client_logo: clientLogo,
       executive_summary: buildTwoPageLetter(clientName.trim() || p.client_name),
       commercials: { line_items: lineItemsCalc, gst_percent: gst, subtotal, gst_amount: gstAmount, total, notes: commNotes },
       proposal_type: "two_page",
@@ -148,9 +153,39 @@ function TwoPageProposalDetail() {
 
       <Card>
         <CardHeader><CardTitle className="text-base">Client</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <Label>Client Name</Label>
-          <Input value={clientName} onChange={(e) => setClientName(e.target.value)} disabled={!editable} />
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label>Client Name</Label>
+            <Input value={clientName} onChange={(e) => setClientName(e.target.value)} disabled={!editable} />
+          </div>
+          <div className="space-y-1">
+            <Label>Client Logo (optional)</Label>
+            {clientLogo && <img src={clientLogo} alt={clientName || p.client_name} className="h-14 object-contain" />}
+            {editable ? (
+              <>
+                <Input
+                  type="file"
+                  accept={LOGO_ACCEPT}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      setClientLogo(await readLogoFileAsDataUrl(file));
+                    } catch (err) {
+                      toast.error(err instanceof Error ? err.message : "Invalid logo file");
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                {clientLogo && (
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setClientLogo(null)}>
+                    Remove logo
+                  </Button>
+                )}
+              </>
+            ) : null}
+            <p className="text-xs text-muted-foreground">PNG, JPG, or JPEG only (max 600 KB). Shown in the proposal header.</p>
+          </div>
         </CardContent>
       </Card>
 
