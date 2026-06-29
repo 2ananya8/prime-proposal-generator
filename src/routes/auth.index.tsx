@@ -7,9 +7,13 @@ import { Separator } from "@/components/ui/separator";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   authRequired,
+  clearOAuthErrorFromUrl,
   completeOAuthSignInIfNeeded,
   completeOAuthSignInSession,
+  ensureProfileForSignIn,
   fetchProfileWithRetry,
+  formatOAuthError,
+  getOAuthErrorFromUrl,
   isOAuthCallbackUrl,
   signInWithMicrosoft,
   signInWithPassword,
@@ -49,10 +53,15 @@ function AuthLoginPage() {
     const user = userData.user;
     if (!user) throw new Error("Login failed");
 
-    const profile = await fetchProfileWithRetry(userId);
+    const profile = await ensureProfileForSignIn(user);
     if (!profile) {
       await supabase.auth.signOut();
-      toast.error("Account not provisioned — contact your admin");
+      const { isSsoUser } = await import("@/lib/auth-password");
+      if (isSsoUser(user) && user.email && isPrimeInfoservEmail(user.email)) {
+        toast.error("Could not set up your account — ask your admin to run the latest database migration.");
+      } else {
+        toast.error("Account not provisioned — contact your admin");
+      }
       return;
     }
     toast.success("Signed in");
@@ -61,6 +70,15 @@ function AuthLoginPage() {
   }, [nav]);
 
   useEffect(() => {
+    const oauthError = getOAuthErrorFromUrl();
+    if (oauthError) {
+      endOAuthSignInFlow();
+      clearOAuthErrorFromUrl();
+      toast.error(formatOAuthError(oauthError));
+      setOauthBusy(false);
+      return;
+    }
+
     if (!isOAuthCallbackUrl()) return;
     let cancelled = false;
 

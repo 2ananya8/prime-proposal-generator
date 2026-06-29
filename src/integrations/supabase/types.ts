@@ -177,6 +177,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_must_change_password: { Args: Record<string, never>; Returns: undefined }
+      ensure_prime_sso_profile: { Args: Record<string, never>; Returns: Database["public"]["Tables"]["profiles"]["Row"] }
       is_admin: { Args: Record<string, never>; Returns: boolean }
     }
     Enums: {

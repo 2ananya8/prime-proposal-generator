@@ -52,7 +52,7 @@ WHERE email = 'you@company.com'
 ON CONFLICT (id) DO UPDATE SET role = 'admin';
 ```
 
-3. **Authentication → Providers** — enable Email/password and **disable public signups**. Enable **Azure (Microsoft)** for employee SSO (see [Microsoft SSO](#microsoft-sso) below).
+3. **Authentication → Providers** — enable Email/password and **Azure (Microsoft)**. Enable **Allow new users to sign up** under Auth settings (required for first-time SSO); external accounts are still created only via admin **Add user** (see [Microsoft SSO](#microsoft-sso)).
 4. **Authentication → URL Configuration** — set **Site URL** to your deployed app (e.g. `https://you.github.io/prime-proposal-generator/`) and add these **Redirect URLs**:
 
    - `https://you.github.io/prime-proposal-generator/auth` (Microsoft SSO return)
@@ -73,13 +73,16 @@ Set `SUPABASE_SERVICE_ROLE_KEY` in **Supabase Dashboard → Edge Functions → S
 
 ### Microsoft SSO
 
-Prime Infoserv employees (`@primeinfoserv.com`) sign in with **Sign in with Microsoft** on the login page. Email/password remains available as a fallback.
+Prime Infoserv employees (`@primeinfoserv.com`) sign in with **Sign in with Microsoft** on the login page. Email/password remains available as a fallback. **First-time SSO users are auto-provisioned** with the `user` role — no admin “Add user” step.
 
 1. **Microsoft Entra ID** — register a single-tenant app. Add redirect URI:  
    `https://<your-supabase-project>.supabase.co/auth/v1/callback`
 2. **Supabase → Authentication → Providers → Azure** — enable and set Application (client) ID, secret, and **Azure Tenant URL** (`https://login.microsoftonline.com/<tenant-id>`).
 3. Add `/auth` to **Redirect URLs** (see step 4 above).
-4. Redeploy Edge Functions after updates: `npx supabase functions deploy admin-create-user`
+4. **Supabase → Authentication → Providers → Email** — keep **Confirm email** on; disable public email sign-up if you only want admin-created external accounts.
+5. **Supabase → Authentication → Settings** — turn **Allow new users to sign up** **ON** so first-time Microsoft SSO can create an `auth.users` row (external collaborators still use admin **Add user**, not self-signup).
+6. **SQL Editor** — run `supabase/migrations/20260624120000_ensure_prime_sso_profile.sql` (auto-provision profile on SSO).
+7. Redeploy Edge Functions after updates: `npx supabase functions deploy admin-create-user`
 
 Admin **Add user** is for **external** emails only; `@primeinfoserv.com` accounts must use Microsoft SSO.
 

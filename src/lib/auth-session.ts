@@ -1,4 +1,5 @@
 import { hasSupabaseConfig, isLocalStorageMode } from "./app-config";
+import { isPrimeInfoservEmail } from "./email-domain";
 import {
   bindAuthSessionToPage,
   clearAuthSessionMeta,
@@ -59,6 +60,29 @@ export async function fetchProfileWithRetry(
   return null;
 }
 
+/** Load profile after sign-in; auto-provision @primeinfoserv.com Microsoft SSO users. */
+export async function ensureProfileForSignIn(user: {
+  id: string;
+  email?: string | null;
+  app_metadata?: Record<string, unknown>;
+  identities?: Array<{ provider?: string }>;
+}): Promise<AppProfile | null> {
+  const existing = await fetchProfileWithRetry(user.id);
+  if (existing) return existing;
+
+  const { isSsoUser } = await import("./auth-password");
+  const email = user.email?.trim().toLowerCase() ?? "";
+  if (!isSsoUser(user) || !isPrimeInfoservEmail(email)) {
+    return null;
+  }
+
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.rpc("ensure_prime_sso_profile");
+  if (!error && data) return data as AppProfile;
+
+  return fetchProfileWithRetry(user.id, 8);
+}
+
 export async function signInWithPassword(email: string, password: string) {
   const supabase = await getSupabase();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -69,7 +93,45 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export function isOAuthCallbackUrl(): boolean {
+  if (getOAuthErrorFromUrl()) return false;
   return isOAuthCallbackPath();
+}
+
+export type OAuthUrlError = {
+  code: string;
+  description: string;
+};
+
+function readOAuthParams(): URLSearchParams | null {
+  if (typeof window === "undefined") return null;
+  for (const raw of [window.location.search, window.location.hash.slice(1)]) {
+    if (!raw) continue;
+    const params = new URLSearchParams(raw.startsWith("?") ? raw.slice(1) : raw);
+    if (params.get("error") || params.get("error_code")) return params;
+  }
+  return null;
+}
+
+export function getOAuthErrorFromUrl(): OAuthUrlError | null {
+  const params = readOAuthParams();
+  if (!params) return null;
+  const code = params.get("error_code") ?? params.get("error");
+  if (!code) return null;
+  const description = (params.get("error_description") ?? "").replace(/\+/g, " ");
+  return { code, description };
+}
+
+export function clearOAuthErrorFromUrl(): void {
+  if (typeof window === "undefined") return;
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+export function formatOAuthError(error: OAuthUrlError): string {
+  if (error.code === "signup_disabled") {
+    return "First-time Microsoft sign-in is blocked. In Supabase go to Authentication → Settings and turn ON “Allow new users to sign up”.";
+  }
+  if (error.description) return error.description;
+  return `Microsoft sign-in failed (${error.code})`;
 }
 
 function clearOAuthParamsFromUrl(): void {
