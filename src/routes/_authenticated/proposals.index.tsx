@@ -17,7 +17,7 @@ function ProposalsList() {
   const auth = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ["proposals"],
-    queryFn: listProposals,
+    queryFn: () => listProposals("standard"),
   });
   return (
     <div className="max-w-5xl space-y-4">
