@@ -260,6 +260,7 @@ export async function generateProposalDocx(input: ProposalPreviewData): Promise<
     const sections: (Paragraph | Table)[] = [];
     sections.push(...richTextBlocks(input.executiveSummary || ""));
     sections.push(new Paragraph({ pageBreakBefore: true }));
+    sections.push(h("Commercials", 1));
     sections.push(buildCommercialsTable(input.commercials));
     if (plainTextField(input.commercials.notes)) {
       sections.push(...richTextBlocks(input.commercials.notes || ""));

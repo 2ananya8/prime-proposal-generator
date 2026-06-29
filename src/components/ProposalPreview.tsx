@@ -122,6 +122,9 @@ export function ProposalPreview({ data }: { data: ProposalPreviewData }) {
           <ProposalPageWatermark />
           <ProposalPageHeader data={data} />
           <div className="proposal-content-body relative z-[1] px-10 py-8">
+            <h2 className="text-base font-bold pb-1 mb-3" style={{ color: BRAND, borderBottom: `2px solid ${ACCENT}` }}>
+              Commercials
+            </h2>
             <div className="space-y-3">
               <CommercialsTable commercials={data.commercials} />
               {plainTextField(data.commercials.notes) ? (

@@ -470,6 +470,7 @@ export async function generateProposalPdf(input: ProposalPreviewData): Promise<U
     newPage(ctx);
     drawRichText(ctx, input.executiveSummary || "");
     newPage(ctx);
+    heading(ctx, "Commercials");
     drawCommercialsTable(ctx, input.commercials);
     if (plainTextField(input.commercials.notes)) {
       drawRichText(ctx, input.commercials.notes || "");
