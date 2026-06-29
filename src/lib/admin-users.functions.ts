@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./app-config";
+import { ADMIN_CREATE_PRIME_EMAIL_ERROR, isPrimeInfoservEmail } from "./email-domain";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -56,6 +57,10 @@ export const adminCreateUserServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { adminClient } = await requireAdminServer(data.accessToken);
     const email = data.email.trim().toLowerCase();
+
+    if (isPrimeInfoservEmail(email)) {
+      throw new Error(ADMIN_CREATE_PRIME_EMAIL_ERROR);
+    }
 
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
       email,

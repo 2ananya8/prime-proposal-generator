@@ -52,12 +52,13 @@ WHERE email = 'you@company.com'
 ON CONFLICT (id) DO UPDATE SET role = 'admin';
 ```
 
-3. **Authentication → Providers** — enable Email/password and **disable public signups**.
-4. **Authentication → URL Configuration** — set **Site URL** to your deployed app (e.g. `https://you.github.io/prime-proposal-generator/`) and add this **Redirect URL** for password reset emails:
+3. **Authentication → Providers** — enable Email/password and **disable public signups**. Enable **Azure (Microsoft)** for employee SSO (see [Microsoft SSO](#microsoft-sso) below).
+4. **Authentication → URL Configuration** — set **Site URL** to your deployed app (e.g. `https://you.github.io/prime-proposal-generator/`) and add these **Redirect URLs**:
 
-   `https://you.github.io/prime-proposal-generator/auth/reset-password`
+   - `https://you.github.io/prime-proposal-generator/auth` (Microsoft SSO return)
+   - `https://you.github.io/prime-proposal-generator/auth/reset-password` (password reset)
 
-   (Use `http://localhost:3000/auth/reset-password` for local dev.)
+   (Use `http://localhost:3000/auth` and `http://localhost:3000/auth/reset-password` for local dev.)
 
 5. Deploy Edge Functions (for in-app user management):
 
@@ -69,6 +70,18 @@ npx supabase functions deploy admin-delete-user
 Set `SUPABASE_SERVICE_ROLE_KEY` in **Supabase Dashboard → Edge Functions → Secrets** (not in GitHub Pages build).
 
 6. Sign in at `/auth` on the deployed app.
+
+### Microsoft SSO
+
+Prime Infoserv employees (`@primeinfoserv.com`) sign in with **Sign in with Microsoft** on the login page. Email/password remains available as a fallback.
+
+1. **Microsoft Entra ID** — register a single-tenant app. Add redirect URI:  
+   `https://<your-supabase-project>.supabase.co/auth/v1/callback`
+2. **Supabase → Authentication → Providers → Azure** — enable and set Application (client) ID, secret, and **Azure Tenant URL** (`https://login.microsoftonline.com/<tenant-id>`).
+3. Add `/auth` to **Redirect URLs** (see step 4 above).
+4. Redeploy Edge Functions after updates: `npx supabase functions deploy admin-create-user`
+
+Admin **Add user** is for **external** emails only; `@primeinfoserv.com` accounts must use Microsoft SSO.
 
 ### Passwords
 

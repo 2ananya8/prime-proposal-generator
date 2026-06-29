@@ -65,6 +65,64 @@ export async function signInWithPassword(email: string, password: string) {
   return data;
 }
 
+export function isOAuthCallbackUrl(): boolean {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("code") && params.get("type") !== "recovery") return true;
+  if (!window.location.hash.startsWith("#")) return false;
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  return hash.get("type") !== "recovery" && Boolean(hash.get("access_token"));
+}
+
+function clearOAuthParamsFromUrl(): void {
+  if (typeof window === "undefined") return;
+  window.history.replaceState({}, document.title, window.location.pathname);
+}
+
+/** Complete Microsoft SSO redirect (PKCE code or implicit hash tokens). */
+export async function completeOAuthSignInIfNeeded(): Promise<boolean> {
+  if (!isOAuthCallbackUrl()) return false;
+
+  const supabase = await getSupabase();
+  const code = new URLSearchParams(window.location.search).get("code");
+
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw error;
+    clearOAuthParamsFromUrl();
+    bindAuthSessionToPage();
+    await supabase.auth.getSession();
+    return true;
+  }
+
+  for (let attempt = 0; attempt < 30; attempt++) {
+    await new Promise((resolve) => window.setTimeout(resolve, 100));
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    if (data.session) {
+      clearOAuthParamsFromUrl();
+      bindAuthSessionToPage();
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export async function signInWithMicrosoft() {
+  const { getAppUrl } = await import("./auth-password");
+  const supabase = await getSupabase();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "azure",
+    options: {
+      redirectTo: getAppUrl("/auth"),
+      scopes: "email openid profile",
+    },
+  });
+  if (error) throw error;
+  return data;
+}
+
 export async function signOut() {
   const supabase = await getSupabase();
   clearAuthSessionMeta();

@@ -1,4 +1,5 @@
 import { corsHeaders, jsonResponse, requireAdmin } from "../_shared/admin-auth.ts";
+import { ADMIN_CREATE_PRIME_EMAIL_ERROR, isPrimeInfoservEmail } from "../_shared/email-domain.ts";
 
 const MIN_PASSWORD_LENGTH = 8;
 
@@ -27,6 +28,9 @@ Deno.serve(async (req) => {
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return jsonResponse({ error: "Valid email is required" }, 400);
+  }
+  if (isPrimeInfoservEmail(email)) {
+    return jsonResponse({ error: ADMIN_CREATE_PRIME_EMAIL_ERROR }, 400);
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     return jsonResponse({ error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters` }, 400);

@@ -72,19 +72,23 @@ function AdminUsersPage() {
       </Link>
       <div>
         <h1 className="text-2xl font-semibold">Users</h1>
-        <p className="text-sm text-muted-foreground">Add or remove team members. Share temporary passwords securely out of band.</p>
+        <p className="text-sm text-muted-foreground">
+          Add external collaborators only. Prime Infoserv employees (@primeinfoserv.com) should sign in with Microsoft on the login page.
+        </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Add user</CardTitle>
-          <CardDescription>Creates an account with email and a temporary password (min. 8 characters). The user must set a new password on first sign-in.</CardDescription>
+          <CardTitle className="text-base">Add external user</CardTitle>
+          <CardDescription>
+            Creates an account for non–Prime Infoserv emails with a temporary password (min. 8 characters). The user must set a new password on first sign-in.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={addUser} className="space-y-3">
             <div className="space-y-1">
               <Label htmlFor="new-email">Email</Label>
-              <Input id="new-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="colleague@company.com" />
+              <Input id="new-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="partner@external.com" />
             </div>
             <div className="space-y-1">
               <Label htmlFor="new-password">Temporary password</Label>

@@ -15,10 +15,19 @@ export const MIN_PASSWORD_LENGTH = 8;
 
 export { RESET_LINK_VERIFY_TIMEOUT_MS };
 
+export function isSsoUser(user: User | null | undefined): boolean {
+  if (!user) return false;
+  if (user.app_metadata?.provider === "azure") return true;
+  const providers = user.app_metadata?.providers;
+  if (Array.isArray(providers) && providers.includes("azure")) return true;
+  return user.identities?.some((identity) => identity.provider === "azure") === true;
+}
+
 export function mustChangePassword(
   user: User | null | undefined,
   profile?: AppProfile | null,
 ): boolean {
+  if (isSsoUser(user)) return false;
   if (profile?.must_change_password === true) return true;
   return user?.user_metadata?.must_change_password === true;
 }
