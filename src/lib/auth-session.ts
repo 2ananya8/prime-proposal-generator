@@ -3,7 +3,10 @@ import {
   bindAuthSessionToPage,
   clearAuthSessionMeta,
   clearLegacyPersistedAuth,
+  endOAuthSignInFlow,
   getAuthSessionPolicyFailure,
+  beginOAuthSignInFlow,
+  isOAuthCallbackPath,
 } from "./auth-session-policy";
 
 export type AppProfile = {
@@ -66,12 +69,7 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export function isOAuthCallbackUrl(): boolean {
-  if (typeof window === "undefined") return false;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get("code") && params.get("type") !== "recovery") return true;
-  if (!window.location.hash.startsWith("#")) return false;
-  const hash = new URLSearchParams(window.location.hash.slice(1));
-  return hash.get("type") !== "recovery" && Boolean(hash.get("access_token"));
+  return isOAuthCallbackPath();
 }
 
 function clearOAuthParamsFromUrl(): void {
@@ -81,8 +79,9 @@ function clearOAuthParamsFromUrl(): void {
 
 /** Complete Microsoft SSO redirect (PKCE code or implicit hash tokens). */
 export async function completeOAuthSignInIfNeeded(): Promise<boolean> {
-  if (!isOAuthCallbackUrl()) return false;
+  if (!isOAuthCallbackPath()) return false;
 
+  beginOAuthSignInFlow();
   const supabase = await getSupabase();
   const code = new URLSearchParams(window.location.search).get("code");
 
@@ -95,7 +94,7 @@ export async function completeOAuthSignInIfNeeded(): Promise<boolean> {
     return true;
   }
 
-  for (let attempt = 0; attempt < 30; attempt++) {
+  for (let attempt = 0; attempt < 50; attempt++) {
     await new Promise((resolve) => window.setTimeout(resolve, 100));
     const { data, error } = await supabase.auth.getSession();
     if (error) throw error;
@@ -111,6 +110,7 @@ export async function completeOAuthSignInIfNeeded(): Promise<boolean> {
 
 export async function signInWithMicrosoft() {
   const { getAppUrl } = await import("./auth-password");
+  beginOAuthSignInFlow();
   const supabase = await getSupabase();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "azure",
@@ -120,7 +120,15 @@ export async function signInWithMicrosoft() {
     },
   });
   if (error) throw error;
+  if (data?.url) {
+    window.location.assign(data.url);
+  }
   return data;
+}
+
+export function completeOAuthSignInSession() {
+  bindAuthSessionToPage();
+  endOAuthSignInFlow();
 }
 
 export async function signOut() {

@@ -4,6 +4,7 @@ export const AUTH_SESSION_MAX_MS = 12 * 60 * 60 * 1000;
 const PAGE_ID_KEY = "prime_auth_page_id";
 const STARTED_AT_KEY = "prime_auth_started_at";
 const RECOVERY_FLOW_KEY = "prime_auth_recovery_flow";
+const OAUTH_FLOW_KEY = "prime_auth_oauth_flow";
 
 /** How long the reset-password page waits for the email link to verify. */
 export const RESET_LINK_VERIFY_TIMEOUT_MS = 60_000;
@@ -32,6 +33,31 @@ export function clearAuthSessionMeta() {
   storage.removeItem(PAGE_ID_KEY);
   storage.removeItem(STARTED_AT_KEY);
   storage.removeItem(RECOVERY_FLOW_KEY);
+  storage.removeItem(OAUTH_FLOW_KEY);
+}
+
+/** True while returning from Microsoft OAuth (hash tokens or PKCE code on /auth). */
+export function isOAuthCallbackPath(): boolean {
+  if (typeof window === "undefined") return false;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("code") && params.get("type") !== "recovery") return true;
+  if (!window.location.hash.startsWith("#")) return false;
+  const hash = new URLSearchParams(window.location.hash.slice(1));
+  return hash.get("type") !== "recovery" && Boolean(hash.get("access_token"));
+}
+
+export function beginOAuthSignInFlow() {
+  const storage = ss();
+  if (!storage) return;
+  storage.setItem(OAUTH_FLOW_KEY, "1");
+}
+
+export function endOAuthSignInFlow() {
+  ss()?.removeItem(OAUTH_FLOW_KEY);
+}
+
+export function isOAuthSignInFlow(): boolean {
+  return ss()?.getItem(OAUTH_FLOW_KEY) === "1";
 }
 
 /** Active while completing a password reset from an email link. */
@@ -79,8 +105,15 @@ export type AuthSessionPolicyFailure =
 /** Returns null when the session may continue, otherwise why it must end. */
 export function getAuthSessionPolicyFailure(hasSession: boolean): AuthSessionPolicyFailure | null {
   if (!hasSession) return null;
-  // Recovery sessions from email links are not bound until we activate them on the reset page.
-  if (isPasswordRecoveryFlow() || isPasswordResetPath()) return null;
+  // Recovery / OAuth returns are not page-bound until we activate them on the auth page.
+  if (
+    isPasswordRecoveryFlow() ||
+    isPasswordResetPath() ||
+    isOAuthCallbackPath() ||
+    isOAuthSignInFlow()
+  ) {
+    return null;
+  }
   if (!isBoundToCurrentPage()) return "refresh";
   if (!isWithinMaxDuration()) return "expired";
   return null;

@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   authRequired,
   completeOAuthSignInIfNeeded,
+  completeOAuthSignInSession,
   fetchProfileWithRetry,
   isOAuthCallbackUrl,
   signInWithMicrosoft,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/auth-session";
 import { mustChangePassword } from "@/lib/auth-password";
 import { isPrimeInfoservEmail } from "@/lib/email-domain";
+import { beginOAuthSignInFlow, endOAuthSignInFlow } from "@/lib/auth-session-policy";
 import { publicAsset } from "@/lib/public-asset";
 import { PRIME_LOGO_ALT } from "@/lib/proposal-header-footer.constants";
 import { toast } from "sonner";
@@ -54,6 +56,7 @@ function AuthLoginPage() {
       return;
     }
     toast.success("Signed in");
+    completeOAuthSignInSession();
     nav({ to: mustChangePassword(user, profile) ? "/account/password" : "/dashboard" });
   }, [nav]);
 
@@ -66,6 +69,7 @@ function AuthLoginPage() {
         const ok = await completeOAuthSignInIfNeeded();
         if (!ok || cancelled) {
           if (!cancelled) {
+            endOAuthSignInFlow();
             toast.error("Microsoft sign-in could not be completed. Please try again.");
             setOauthBusy(false);
           }
@@ -77,6 +81,7 @@ function AuthLoginPage() {
         await finishSignIn(data.session.user.id);
       } catch (err: unknown) {
         if (cancelled) return;
+        endOAuthSignInFlow();
         const msg = err instanceof Error ? err.message : "Microsoft sign-in failed";
         toast.error(msg);
         setOauthBusy(false);
@@ -90,9 +95,11 @@ function AuthLoginPage() {
 
   const signInWithMicrosoftClick = async () => {
     setOauthBusy(true);
+    beginOAuthSignInFlow();
     try {
       await signInWithMicrosoft();
     } catch (err: unknown) {
+      endOAuthSignInFlow();
       const msg = err instanceof Error ? err.message : "Microsoft sign-in failed";
       toast.error(msg);
       setOauthBusy(false);

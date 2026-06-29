@@ -14,6 +14,8 @@ import {
   bindAuthSessionToPage,
   clearLegacyPersistedAuth,
   getAuthSessionPolicyFailure,
+  isOAuthCallbackPath,
+  isOAuthSignInFlow,
   msUntilAuthExpiry,
 } from "./auth-session-policy";
 
@@ -116,7 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           bindAuthSessionToPage();
         }
         if (event === "SIGNED_IN" && nextSession) {
-          // Bind before policy check — signInWithPassword may not have run yet when this fires.
+          // Bind before policy check — signInWithPassword / OAuth may not have run yet when this fires.
+          bindAuthSessionToPage();
+          scheduleExpiryCheck();
+        }
+        if (event === "INITIAL_SESSION" && nextSession && (isOAuthCallbackPath() || isOAuthSignInFlow())) {
           bindAuthSessionToPage();
           scheduleExpiryCheck();
         }
