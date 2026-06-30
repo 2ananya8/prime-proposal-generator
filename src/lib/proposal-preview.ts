@@ -1,5 +1,11 @@
 import { parseScopeFromDetails, type ScopeField } from "./scope-fields";
 import { normalizeCommercials } from "./commercials-line-item";
+import {
+  buildTwoPageLetter,
+  hasCustomTwoPageLetter,
+  hasStoredTwoPageLetterFields,
+  parseTwoPageLetterFields,
+} from "./two-page-proposal";
 
 export type ProposalContentOverrides = {
   project_objectives?: string[];
@@ -79,6 +85,12 @@ export function buildProposalPreview(proposal: any): ProposalPreviewData | null 
   if (proposalType === "two_page") {
     const commercials = normalizeCommercials(proposal.commercials as any);
     const clientName = String(proposal.client_name ?? "");
+    const letterFields = parseTwoPageLetterFields(proposal);
+    const executiveSummary = hasCustomTwoPageLetter(proposal)
+      ? String(proposal.executive_summary ?? "")
+      : hasStoredTwoPageLetterFields(proposal)
+        ? buildTwoPageLetter(letterFields, String(proposal.proposal_date ?? ""))
+        : fillClientName(proposal.executive_summary || "", clientName);
     return {
       proposalType,
       clientName,
@@ -88,7 +100,7 @@ export function buildProposalPreview(proposal: any): ProposalPreviewData | null 
         name: "2-page Proposal",
         service_type: "two_page",
       },
-      executiveSummary: fillClientName(proposal.executive_summary || "", clientName),
+      executiveSummary,
       clientResearch: null,
       scope: { fields: [], project_overview: "" },
       timeline: [],

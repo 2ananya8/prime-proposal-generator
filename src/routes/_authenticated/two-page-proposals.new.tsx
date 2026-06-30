@@ -7,11 +7,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/RichTextEditor";
-import { ProposalRichText } from "@/components/ProposalRichText";
 import { CommercialsLineItemsEditor } from "@/components/CommercialsLineItemsEditor";
+import { TwoPageEngagementScopeEditor } from "@/components/TwoPageEngagementScopeEditor";
+import { TwoPageLetterBodyEditor } from "@/components/TwoPageLetterBodyEditor";
 import { commercialsSubtotal, EMPTY_COMMERCIAL_LINE_ITEM, normalizeCommercialLineItems, type CommercialLineItem } from "@/lib/commercials-line-item";
 import { createProposal } from "@/lib/data-api";
-import { buildTwoPageLetter } from "@/lib/two-page-proposal";
+import {
+  EMPTY_TWO_PAGE_LETTER_FIELDS,
+  letterFieldsToScopeDetails,
+  type TwoPageLetterFields,
+} from "@/lib/two-page-proposal";
+import { useTwoPageLetterHtml } from "@/lib/use-two-page-letter-html";
 import { LOGO_ACCEPT, readLogoFileAsDataUrl } from "@/lib/image-upload";
 
 export const Route = createFileRoute("/_authenticated/two-page-proposals/new")({
@@ -24,21 +30,33 @@ function NewTwoPageProposal() {
   const [clientName, setClientName] = useState("");
   const [clientLogo, setClientLogo] = useState<string | null>(null);
   const [proposalDate, setProposalDate] = useState(new Date().toISOString().slice(0, 10));
+  const [letterFields, setLetterFields] = useState<TwoPageLetterFields>(EMPTY_TWO_PAGE_LETTER_FIELDS);
   const [lineItems, setLineItems] = useState<CommercialLineItem[]>([{ ...EMPTY_COMMERCIAL_LINE_ITEM }]);
   const [gst, setGst] = useState(18);
   const [commNotes, setCommNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const resolvedLetterFields = useMemo(
+    () => ({ ...letterFields, client_name: clientName.trim() }),
+    [letterFields, clientName],
+  );
+  const {
+    letterHtml,
+    letterCustomized,
+    updateLetterHtml,
+    regenerateFromTemplate,
+  } = useTwoPageLetterHtml(resolvedLetterFields, proposalDate);
+
   const lineItemsCalc = useMemo(() => normalizeCommercialLineItems(lineItems), [lineItems]);
   const subtotal = useMemo(() => commercialsSubtotal(lineItemsCalc), [lineItemsCalc]);
   const gstAmount = (subtotal * gst) / 100;
   const total = subtotal + gstAmount;
-  const letter = buildTwoPageLetter(clientName || "{{client_name}}");
 
   const save = async () => {
     if (!clientName.trim()) return toast.error("Client name required");
     setSaving(true);
     try {
+      const fields = { ...resolvedLetterFields, client_name: clientName.trim() };
       const data = await createProposal({
         proposal_type: "two_page",
         client_name: clientName.trim(),
@@ -47,8 +65,8 @@ function NewTwoPageProposal() {
         service_id: null,
         proposal_date: proposalDate,
         client_research: null,
-        executive_summary: buildTwoPageLetter(clientName.trim()),
-        scope_details: {},
+        executive_summary: letterHtml,
+        scope_details: letterFieldsToScopeDetails(fields, letterCustomized),
         timeline_overrides: [],
         commercials: { line_items: lineItemsCalc, gst_percent: gst, subtotal, gst_amount: gstAmount, total, notes: commNotes },
         payment_milestones: [],
@@ -74,8 +92,36 @@ function NewTwoPageProposal() {
         <CardHeader><CardTitle className="text-base">Client</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
-            <Label>Client Name *</Label>
-            <Input value={clientName} onChange={(e) => setClientName(e.target.value)} placeholder="ACME Corp" />
+            <Label>Client name *</Label>
+            <Input
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              placeholder="ACME Corp"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Contact name</Label>
+            <Input
+              value={letterFields.client_contact_name}
+              onChange={(e) => setLetterFields((f) => ({ ...f, client_contact_name: e.target.value }))}
+              placeholder="Mr. John Smith"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Contact designation</Label>
+            <Input
+              value={letterFields.client_designation}
+              onChange={(e) => setLetterFields((f) => ({ ...f, client_designation: e.target.value }))}
+              placeholder="Chief Information Officer"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Engagement name</Label>
+            <Input
+              value={letterFields.engagement_name}
+              onChange={(e) => setLetterFields((f) => ({ ...f, engagement_name: e.target.value }))}
+              placeholder="ISO 27001 Surveillance Audit"
+            />
           </div>
           <div className="space-y-1">
             <Label>Client Logo (optional)</Label>
@@ -104,12 +150,17 @@ function NewTwoPageProposal() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Letter (template)</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          <p className="text-xs text-muted-foreground">Only <code>{"{{client_name}}"}</code> is replaced automatically.</p>
-          <div className="rounded-md border p-3">
-            <ProposalRichText content={letter} />
-          </div>
+        <CardHeader><CardTitle className="text-base">Letter</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <TwoPageEngagementScopeEditor
+            value={letterFields.engagement_scope_list}
+            onChange={(value) => setLetterFields((f) => ({ ...f, engagement_scope_list: value }))}
+          />
+          <TwoPageLetterBodyEditor
+            value={letterHtml}
+            onChange={updateLetterHtml}
+            onRegenerate={regenerateFromTemplate}
+          />
         </CardContent>
       </Card>
 

@@ -15,9 +15,16 @@ import { generateProposalFilesLocally } from "@/lib/generate-proposal-files";
 import { useAuth } from "@/lib/auth";
 import { canEditProposal } from "@/lib/permissions";
 import { authRequired } from "@/lib/auth-session";
-import { buildTwoPageLetter } from "@/lib/two-page-proposal";
+import {
+  hasCustomTwoPageLetter,
+  letterFieldsToScopeDetails,
+  parseTwoPageLetterFields,
+  type TwoPageLetterFields,
+} from "@/lib/two-page-proposal";
+import { useTwoPageLetterHtml } from "@/lib/use-two-page-letter-html";
 import { CommercialsLineItemsEditor } from "@/components/CommercialsLineItemsEditor";
-import { ProposalRichText } from "@/components/ProposalRichText";
+import { TwoPageEngagementScopeEditor } from "@/components/TwoPageEngagementScopeEditor";
+import { TwoPageLetterBodyEditor } from "@/components/TwoPageLetterBodyEditor";
 import { LOGO_ACCEPT, readLogoFileAsDataUrl } from "@/lib/image-upload";
 
 export const Route = createFileRoute("/_authenticated/two-page-proposals/$id")({
@@ -39,24 +46,46 @@ function TwoPageProposalDetail() {
   const initialItems = useMemo(() => normalizeCommercials(commercialsRaw).line_items, [commercialsRaw]);
   const [clientName, setClientName] = useState("");
   const [clientLogo, setClientLogo] = useState<string | null>(null);
+  const [proposalDate, setProposalDate] = useState("");
+  const [letterFields, setLetterFields] = useState<TwoPageLetterFields>(parseTwoPageLetterFields({}));
   const [lineItems, setLineItems] = useState<CommercialLineItem[]>([]);
   const [gst, setGst] = useState(18);
   const [commNotes, setCommNotes] = useState("");
+  const [letterLoaded, setLetterLoaded] = useState(false);
 
   useEffect(() => {
     if (!p) return;
     setClientName(p.client_name);
     setClientLogo(p.client_logo ?? null);
+    setProposalDate(p.proposal_date);
+    setLetterFields(parseTwoPageLetterFields(p));
     setLineItems(initialItems);
     setGst(Number(commercialsRaw.gst_percent ?? 18));
     setCommNotes(String(commercialsRaw.notes ?? ""));
+    setLetterLoaded(false);
   }, [p, initialItems, commercialsRaw.gst_percent, commercialsRaw.notes]);
 
+  const resolvedLetterFields = useMemo(
+    () => ({ ...letterFields, client_name: clientName.trim() }),
+    [letterFields, clientName],
+  );
+  const {
+    letterHtml,
+    letterCustomized,
+    updateLetterHtml,
+    regenerateFromTemplate,
+    loadSavedLetter,
+  } = useTwoPageLetterHtml(resolvedLetterFields, proposalDate || p?.proposal_date || "");
+
+  useEffect(() => {
+    if (!p || letterLoaded) return;
+    loadSavedLetter(p.executive_summary || "", hasCustomTwoPageLetter(p));
+    setLetterLoaded(true);
+  }, [p, letterLoaded, loadSavedLetter]);
   const lineItemsCalc = useMemo(() => normalizeCommercialLineItems(lineItems), [lineItems]);
   const subtotal = useMemo(() => commercialsSubtotal(lineItemsCalc), [lineItemsCalc]);
   const gstAmount = (subtotal * gst) / 100;
   const total = subtotal + gstAmount;
-  const letter = buildTwoPageLetter(clientName || "{{client_name}}");
 
   const triggerDownload = (base64: string, filename: string, mime: string) => {
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
@@ -74,10 +103,13 @@ function TwoPageProposalDetail() {
     if (!clientName.trim()) return toast.error("Client name required");
     setSaving(true);
     try {
+      const fields = { ...resolvedLetterFields, client_name: clientName.trim() };
       await updateProposal(id, {
         client_name: clientName.trim(),
         client_logo: clientLogo,
-        executive_summary: buildTwoPageLetter(clientName.trim()),
+        proposal_date: proposalDate,
+        executive_summary: letterHtml,
+        scope_details: letterFieldsToScopeDetails(fields, letterCustomized),
         commercials: { line_items: lineItemsCalc, gst_percent: gst, subtotal, gst_amount: gstAmount, total, notes: commNotes },
       });
       toast.success("Saved");
@@ -91,11 +123,14 @@ function TwoPageProposalDetail() {
 
   const generate = async () => {
     if (!p) return;
+    const fields = { ...resolvedLetterFields, client_name: clientName.trim() || p.client_name };
     const preview = buildProposalPreview({
       ...p,
       client_name: clientName.trim() || p.client_name,
       client_logo: clientLogo,
-      executive_summary: buildTwoPageLetter(clientName.trim() || p.client_name),
+      proposal_date: proposalDate || p.proposal_date,
+      scope_details: letterFieldsToScopeDetails(fields, letterCustomized),
+      executive_summary: letterHtml,
       commercials: { line_items: lineItemsCalc, gst_percent: gst, subtotal, gst_amount: gstAmount, total, notes: commNotes },
       proposal_type: "two_page",
     });
@@ -155,8 +190,39 @@ function TwoPageProposalDetail() {
         <CardHeader><CardTitle className="text-base">Client</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-1">
-            <Label>Client Name</Label>
+            <Label>Client name</Label>
             <Input value={clientName} onChange={(e) => setClientName(e.target.value)} disabled={!editable} />
+          </div>
+          <div className="space-y-1">
+            <Label>Contact name</Label>
+            <Input
+              value={letterFields.client_contact_name}
+              onChange={(e) => setLetterFields((f) => ({ ...f, client_contact_name: e.target.value }))}
+              placeholder="Mr. John Smith"
+              disabled={!editable}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Contact designation</Label>
+            <Input
+              value={letterFields.client_designation}
+              onChange={(e) => setLetterFields((f) => ({ ...f, client_designation: e.target.value }))}
+              placeholder="Chief Information Officer"
+              disabled={!editable}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Engagement name</Label>
+            <Input
+              value={letterFields.engagement_name}
+              onChange={(e) => setLetterFields((f) => ({ ...f, engagement_name: e.target.value }))}
+              placeholder="ISO 27001 Surveillance Audit"
+              disabled={!editable}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label>Proposal date</Label>
+            <Input type="date" value={proposalDate} onChange={(e) => setProposalDate(e.target.value)} disabled={!editable} />
           </div>
           <div className="space-y-1">
             <Label>Client Logo (optional)</Label>
@@ -190,11 +256,19 @@ function TwoPageProposalDetail() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Letter (template)</CardTitle></CardHeader>
-        <CardContent>
-          <div className="rounded-md border p-3">
-            <ProposalRichText content={letter} />
-          </div>
+        <CardHeader><CardTitle className="text-base">Letter</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <TwoPageEngagementScopeEditor
+            value={letterFields.engagement_scope_list}
+            onChange={(value) => setLetterFields((f) => ({ ...f, engagement_scope_list: value }))}
+            disabled={!editable}
+          />
+          <TwoPageLetterBodyEditor
+            value={letterHtml}
+            onChange={updateLetterHtml}
+            onRegenerate={regenerateFromTemplate}
+            disabled={!editable}
+          />
         </CardContent>
       </Card>
 

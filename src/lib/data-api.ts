@@ -193,7 +193,13 @@ function assertValidClientLogo(client_logo: string | null | undefined) {
 export async function createProposal(input: CreateProposalInput) {
   assertValidClientLogo(input.client_logo);
   const proposalType = input.proposal_type ?? "standard";
-  if (isLocalStorageMode()) return localStore.createProposal({ ...input, proposal_type: proposalType });
+  if (isLocalStorageMode()) {
+    return localStore.createProposal({
+      ...input,
+      proposal_type: proposalType,
+      client_logo: input.client_logo ?? null,
+    });
+  }
   const supabase = await sb();
   const userId = await getCurrentUserId();
   if (!userId) throw new Error("You must be signed in to create a proposal.");
@@ -226,7 +232,9 @@ export async function updateProposal(
   patch: {
     client_name?: string;
     client_logo?: string | null;
+    proposal_date?: string;
     executive_summary?: string | null;
+    scope_details?: Record<string, unknown>;
     commercials?: Record<string, unknown>;
   },
 ) {
