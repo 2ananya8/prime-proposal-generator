@@ -23,9 +23,11 @@ export const TWO_PAGE_LETTER_TEMPLATE = `{{date}}
 {{client_designation}}
 {{client_name}}
 
+
 **Subject:** Proposal for {{engagement_name}}
 
 Dear sir/madam,
+
 
 With reference to your requirement for **{{engagement_name}}**, we at **Prime Infoserv Pvt. Ltd.** are pleased to submit our proposal for your kind consideration.
 
@@ -35,7 +37,9 @@ The proposed engagement will cover support for the following:
 
 This engagement is designed to assist your organization in maintaining and enhancing its management systems, certifications, compliance posture, and process maturity, as applicable. Depending on the scope, the services may include surveillance audits, recertification support, assessments, gap analysis, implementation assistance, compliance validation, or other related activities to ensure continued conformance with applicable standards, regulatory requirements, and industry best practices.
 
+
 Thank you for considering our proposal. We look forward to the opportunity to partner with your organization and establish a long-term, mutually beneficial relationship.
+
 
 Yours sincerely,
 
@@ -66,16 +70,26 @@ function inlineMarkdownToHtml(text: string): string {
 }
 
 function plainLetterToHtml(text: string): string {
-  return text
-    .split(/\n\n+/)
-    .map((block) => {
-      const inner = block
-        .split("\n")
-        .map((line) => inlineMarkdownToHtml(line))
-        .join("<br />");
-      return `<p>${inner}</p>`;
-    })
-    .join("");
+  const parts: string[] = [];
+  let paragraphLines: string[] = [];
+
+  const flushParagraph = () => {
+    if (paragraphLines.length === 0) {
+      parts.push("<p><br /></p>");
+      return;
+    }
+    const inner = paragraphLines.map((line) => inlineMarkdownToHtml(line)).join("<br />");
+    parts.push(`<p>${inner}</p>`);
+    paragraphLines = [];
+  };
+
+  for (const line of text.split("\n")) {
+    if (line.trim() === "") flushParagraph();
+    else paragraphLines.push(line);
+  }
+  flushParagraph();
+
+  return parts.join("");
 }
 
 const SCOPE_PLACEHOLDER = "{{engagement_scope_list}}";
