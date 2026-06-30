@@ -255,7 +255,14 @@ export async function deleteProposal(id: string) {
   if (error) throw new Error(formatDbError(error));
 }
 
-export async function listProfiles() {
+export type ProfileListItem = {
+  id: string;
+  email: string;
+  role: "admin" | "user";
+  created_at: string;
+};
+
+export async function listProfiles(): Promise<ProfileListItem[]> {
   if (isLocalStorageMode()) return [];
   const supabase = await sb();
   const { data, error } = await supabase

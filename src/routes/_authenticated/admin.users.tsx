@@ -31,7 +31,7 @@ function AdminUsersPage() {
 
   const users = useQuery({
     queryKey: ["profiles"],
-    queryFn: listProfiles,
+    queryFn: () => listProfiles(),
   });
 
   const addUser = async (e: React.FormEvent) => {

@@ -23,11 +23,9 @@ export const TWO_PAGE_LETTER_TEMPLATE = `{{date}}
 {{client_designation}}
 {{client_name}}
 
-
 **Subject:** Proposal for {{engagement_name}}
 
-
-Dear sir/madam,
+Dear Sir/Madam,
 
 With reference to your requirement for **{{engagement_name}}**, we at **Prime Infoserv Pvt. Ltd.** are pleased to submit our proposal for your kind consideration.
 
@@ -48,8 +46,7 @@ Yours sincerely,
 
 
 (SUSHOBHAN MUKHERJEE)
-GSM: +91 9830017040
-`;
+GSM: +91 9830017040`;
 
 const LETTER_FIELD_KEYS = Object.keys(EMPTY_TWO_PAGE_LETTER_FIELDS) as (keyof TwoPageLetterFields)[];
 
