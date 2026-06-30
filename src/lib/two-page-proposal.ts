@@ -23,19 +23,23 @@ export const TWO_PAGE_LETTER_TEMPLATE = `{{date}}
 {{client_designation}}
 {{client_name}}
 
+
 **Subject:** Proposal for {{engagement_name}}
+
 
 Dear sir/madam,
 
 With reference to your requirement for **{{engagement_name}}**, we at **Prime Infoserv Pvt. Ltd.** are pleased to submit our proposal for your kind consideration.
 
-The proposed engagement will cover support for the following:
 
+The proposed engagement will cover support for the following:
 {{engagement_scope_list}}
 
 This engagement is designed to assist your organization in maintaining and enhancing its management systems, certifications, compliance posture, and process maturity, as applicable. Depending on the scope, the services may include surveillance audits, recertification support, assessments, gap analysis, implementation assistance, compliance validation, or other related activities to ensure continued conformance with applicable standards, regulatory requirements, and industry best practices.
 
+
 Thank you for considering our proposal. We look forward to the opportunity to partner with your organization and establish a long-term, mutually beneficial relationship.
+
 
 Yours sincerely,
 
