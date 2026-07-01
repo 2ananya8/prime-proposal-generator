@@ -16,6 +16,7 @@ import {
   buildDocxImageParagraph,
   htmlContainsImages,
   splitHtmlByImages,
+  alignmentForImageAt,
   textAlignFromHtmlAttrs,
 } from "./rich-html-images";
 import { getProposalSectionContent, hasCoverageMatrix, hasFilledMilestones, customSectionTitle, hasFilledText } from "./proposal-section-visibility";
@@ -186,16 +187,40 @@ async function richHtmlBlockToDocx(tag: string, inner: string, attrs = ""): Prom
   return richInnerToDocxParagraphs(inner, attrs);
 }
 
+async function richHtmlWithImagesToDocx(html: string): Promise<(Paragraph | Table)[]> {
+  const parts = splitHtmlByImages(html);
+  const blocks: (Paragraph | Table)[] = [];
+
+  for (const part of parts) {
+    if (part.type === "image") {
+      blocks.push(await buildDocxImageParagraph(part.src, part.alt, alignmentForImageAt(html, part.index)));
+      continue;
+    }
+
+    const chunk = part.html.trim();
+    if (!chunk) continue;
+    if (htmlContainsImages(chunk)) {
+      blocks.push(...(await richHtmlWithImagesToDocx(chunk)));
+      continue;
+    }
+    blocks.push(...(await richHtmlToDocxParagraphs(chunk)));
+  }
+
+  return blocks;
+}
+
 async function richHtmlToDocxParagraphs(html: string): Promise<(Paragraph | Table)[]> {
   if (!html?.trim()) return [];
+
+  if (htmlContainsImages(html)) {
+    return richHtmlWithImagesToDocx(html);
+  }
 
   const blocks = splitRichHtmlBlocks(html);
   if (blocks.length) {
     const nested = await Promise.all(blocks.map(({ tag, inner, attrs }) => richHtmlBlockToDocx(tag, inner, attrs)));
     return nested.flat();
   }
-
-  if (htmlContainsImages(html)) return richInnerToDocxParagraphs(html);
 
   const segs = htmlToInlineSegments(html);
   if (!segs.length) return [];

@@ -44,14 +44,18 @@ function readUInt16BE(buffer: Uint8Array, offset: number): number {
   return (buffer[offset]! << 8) | buffer[offset + 1]!;
 }
 
-export function detectImageType(buffer: Uint8Array): "png" | "jpg" {
+export function detectEmbeddableImageType(buffer: Uint8Array): "png" | "jpg" | null {
   if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
     return "png";
   }
   if (buffer.length >= 2 && buffer[0] === 0xff && buffer[1] === 0xd8) {
     return "jpg";
   }
-  return "png";
+  return null;
+}
+
+export function detectImageType(buffer: Uint8Array): "png" | "jpg" {
+  return detectEmbeddableImageType(buffer) ?? "png";
 }
 
 async function fetchAssetBytes(names: string[]): Promise<Uint8Array | null> {

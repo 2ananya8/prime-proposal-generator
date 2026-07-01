@@ -3,12 +3,14 @@ import { preloadCoverAssets } from "./cover-page-assets";
 
 function uint8ToBase64(bytes: Uint8Array): string {
   const chunkSize = 0x8000;
-  let binary = "";
+  const chunks: string[] = [];
   for (let i = 0; i < bytes.length; i += chunkSize) {
     const chunk = bytes.subarray(i, i + chunkSize);
-    binary += String.fromCharCode(...chunk);
+    let bin = "";
+    for (let j = 0; j < chunk.length; j++) bin += String.fromCharCode(chunk[j]!);
+    chunks.push(bin);
   }
-  return btoa(binary);
+  return btoa(chunks.join(""));
 }
 
 /** Generate DOCX/PDF in the browser (GitHub Pages and local dev). */

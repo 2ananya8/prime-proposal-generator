@@ -1,7 +1,7 @@
 import { AlignmentType, ImageRun, Paragraph } from "docx";
 import { decodeHtmlEntities } from "./html-content";
 import {
-  detectImageType,
+  detectEmbeddableImageType,
   getImageDimensions,
   parseImageDataUrl,
   placeholderImage,
@@ -11,10 +11,13 @@ import {
 
 export type HtmlContentPart =
   | { type: "text"; html: string }
-  | { type: "image"; src: string; alt: string };
+  | { type: "image"; src: string; alt: string; index: number };
 
 const BODY_IMAGE_MAX_WIDTH_PX = 520;
 const BODY_IMAGE_MAX_HEIGHT_PX = 700;
+/** Downscale large uploads before embedding (preview shows full size; Word/PDF need smaller bitmaps). */
+const EXPORT_MAX_PIXEL_WIDTH = 900;
+const EXPORT_MAX_PIXEL_HEIGHT = 1200;
 
 function readHtmlAttribute(tag: string, name: string): string {
   const re = new RegExp(`\\b${name}\\s*=\\s*`, "i");
@@ -34,6 +37,23 @@ function readHtmlAttribute(tag: string, name: string): string {
   return decodeHtmlEntities(tag.slice(start, i));
 }
 
+function findImgTagEnd(html: string, start: number): number {
+  let i = start + 4;
+  while (i < html.length) {
+    const ch = html[i];
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      i++;
+      while (i < html.length && html[i] !== quote) i++;
+      if (i < html.length) i++;
+      continue;
+    }
+    if (ch === ">") return i;
+    i++;
+  }
+  return -1;
+}
+
 function findImgTags(html: string): { index: number; length: number; tag: string }[] {
   const tags: { index: number; length: number; tag: string }[] = [];
   const lower = html.toLowerCase();
@@ -43,7 +63,7 @@ function findImgTags(html: string): { index: number; length: number; tag: string
     const idx = lower.indexOf("<img", cursor);
     if (idx < 0) break;
 
-    let end = html.indexOf(">", idx);
+    const end = findImgTagEnd(html, idx);
     if (end < 0) break;
 
     tags.push({ index: idx, length: end - idx + 1, tag: html.slice(idx, end + 1) });
@@ -67,7 +87,7 @@ export function splitHtmlByImages(html: string): HtmlContentPart[] {
 
     const src = readHtmlAttribute(tag, "src");
     const alt = readHtmlAttribute(tag, "alt") || "Image";
-    if (src) parts.push({ type: "image", src, alt });
+    if (src) parts.push({ type: "image", src, alt, index });
     lastIndex = index + length;
   }
 
@@ -90,6 +110,15 @@ export function textAlignFromHtmlAttrs(attrs = ""): (typeof AlignmentType)[keyof
   return AlignmentType.LEFT;
 }
 
+/** Guess paragraph alignment wrapping an image (service images default to centered). */
+export function alignmentForImageAt(html: string, imageIndex: number): (typeof AlignmentType)[keyof typeof AlignmentType] {
+  const before = html.slice(Math.max(0, imageIndex - 400), imageIndex);
+  const pMatch = before.match(/<p([^>]*)>(?:[^<]*)$/i);
+  if (pMatch?.[1]) return textAlignFromHtmlAttrs(pMatch[1]);
+  if (/text-align:\s*center/i.test(before)) return AlignmentType.CENTER;
+  return AlignmentType.CENTER;
+}
+
 function base64ToBytes(base64: string): Uint8Array {
   const binary = atob(base64);
   const buffer = new Uint8Array(binary.length);
@@ -106,8 +135,8 @@ function parseAnyDataUrl(src: string, alt: string): ParsedImage | null {
 
   try {
     const buffer = base64ToBytes(match[1]);
-    const type = detectImageType(buffer);
-    if (type === "png" || type === "jpg") return { buffer, type, alt };
+    const type = detectEmbeddableImageType(buffer);
+    if (type) return { buffer, type, alt };
   } catch {
     return null;
   }
@@ -115,21 +144,32 @@ function parseAnyDataUrl(src: string, alt: string): ParsedImage | null {
   return null;
 }
 
-function rasterizeImageSrc(src: string): Promise<ParsedImage | null> {
+function rasterizeImageSrc(
+  src: string,
+  maxWidth = EXPORT_MAX_PIXEL_WIDTH,
+  maxHeight = EXPORT_MAX_PIXEL_HEIGHT,
+): Promise<ParsedImage | null> {
   if (typeof Image === "undefined" || typeof document === "undefined") {
     return Promise.resolve(null);
   }
 
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // crossOrigin on data:/blob: URLs breaks loading in several browsers.
+    if (/^https?:\/\//i.test(src)) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => {
-      const width = img.naturalWidth || img.width;
-      const height = img.naturalHeight || img.height;
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
       if (!width || !height) {
         resolve(null);
         return;
       }
+
+      const scale = Math.min(1, maxWidth / width, maxHeight / height);
+      width = Math.max(1, Math.round(width * scale));
+      height = Math.max(1, Math.round(height * scale));
 
       const canvas = document.createElement("canvas");
       canvas.width = width;
@@ -140,7 +180,7 @@ function rasterizeImageSrc(src: string): Promise<ParsedImage | null> {
         return;
       }
 
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, width, height);
       const pngUrl = canvas.toDataURL("image/png");
       resolve(parseImageDataUrl(pngUrl, "Image"));
     };
@@ -149,17 +189,44 @@ function rasterizeImageSrc(src: string): Promise<ParsedImage | null> {
   });
 }
 
+async function downscaleParsedImageForExport(img: ParsedImage): Promise<ParsedImage> {
+  const dims = getImageDimensions(img.buffer);
+  if (dims.width <= EXPORT_MAX_PIXEL_WIDTH && dims.height <= EXPORT_MAX_PIXEL_HEIGHT) {
+    return img;
+  }
+  if (typeof document === "undefined") return img;
+
+  const mime = img.type === "jpg" ? "image/jpeg" : "image/png";
+  const url = URL.createObjectURL(new Blob([img.buffer], { type: mime }));
+  try {
+    const downscaled = await rasterizeImageSrc(url);
+    if (downscaled) return downscaled;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+  return img;
+}
+
 /** Decode embedded or remote images into PNG/JPEG bytes for PDF/DOCX export. */
 export async function resolveImageForExport(src: string, alt: string): Promise<ParsedImage> {
   const trimmed = src.trim();
   if (!trimmed) return placeholderImage(alt);
 
   const parsed = parseAnyDataUrl(trimmed, alt);
-  if (parsed) return parsed;
+  if (parsed) {
+    const sized = await downscaleParsedImageForExport(parsed);
+    return { ...sized, alt };
+  }
 
-  if (trimmed.startsWith("data:image/")) {
-    const rasterized = await rasterizeImageSrc(trimmed);
-    if (rasterized) return { ...rasterized, alt };
+  if (typeof Image !== "undefined" && typeof document !== "undefined") {
+    if (
+      trimmed.startsWith("data:image/")
+      || trimmed.startsWith("blob:")
+      || /^https?:\/\//i.test(trimmed)
+    ) {
+      const rasterized = await rasterizeImageSrc(trimmed);
+      if (rasterized) return { ...rasterized, alt };
+    }
   }
 
   if (/^https?:\/\//i.test(trimmed) && typeof fetch !== "undefined") {
@@ -167,8 +234,11 @@ export async function resolveImageForExport(src: string, alt: string): Promise<P
       const response = await fetch(trimmed);
       if (response.ok) {
         const buffer = new Uint8Array(await response.arrayBuffer());
-        const type = detectImageType(buffer);
-        if (type === "png" || type === "jpg") return { buffer, type, alt };
+        const type = detectEmbeddableImageType(buffer);
+        if (type) {
+          const sized = await downscaleParsedImageForExport({ buffer, type, alt });
+          return sized;
+        }
         const blobUrl = URL.createObjectURL(new Blob([buffer]));
         try {
           const rasterized = await rasterizeImageSrc(blobUrl);
@@ -217,4 +287,15 @@ export async function buildDocxImageParagraph(
 
 export function htmlContainsImages(html: string): boolean {
   return /<img\b/i.test(html);
+}
+
+/** Layout dimensions for drawing an exported image in PDF (uses buffer metadata). */
+export function pdfImageLayout(
+  img: ParsedImage,
+  maxWidth: number,
+): { width: number; height: number } {
+  const dims = getImageDimensions(img.buffer);
+  const width = Math.min(maxWidth, dims.width);
+  const height = Math.max(1, Math.round((dims.height / Math.max(dims.width, 1)) * width));
+  return { width, height };
 }

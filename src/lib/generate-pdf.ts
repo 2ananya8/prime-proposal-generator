@@ -19,7 +19,7 @@ import {
   embedPdfImage,
   placeholderImage,
 } from "./cover-page-assets";
-import { htmlContainsImages, resolveImageForExport, splitHtmlByImages } from "./rich-html-images";
+import { htmlContainsImages, splitHtmlByImages, alignmentForImageAt, resolveImageForExport, pdfImageLayout } from "./rich-html-images";
 import {
   buildCommercialsTableRows,
   COMMERCIALS_TABLE_HEADERS,
@@ -188,6 +188,44 @@ function drawTokens(ctx: Ctx, tokens: Token[], opts: { x: number; indent?: numbe
   ctx.y -= opts.gapAfter ?? 2;
 }
 
+async function drawExportedImage(
+  ctx: Ctx,
+  src: string,
+  alt: string,
+  attrs = "",
+  opts: { x?: number; indent?: number; gapAfter?: number; color?: typeof TEXT } = {},
+) {
+  const indent = opts.indent ?? 0;
+  const x = opts.x ?? MARGIN + indent;
+  const gapAfter = opts.gapAfter ?? 2;
+  const color = opts.color ?? TEXT;
+  const maxW = PAGE_W - MARGIN * 2 - indent;
+  const centered = /text-align:\s*center/i.test(attrs);
+
+  const parsed = await resolveImageForExport(src, alt);
+  try {
+    const embedded = await embedPdfImage(ctx.pdf, parsed);
+    const layout = pdfImageLayout(parsed, maxW);
+    const width = layout.width;
+    const height = layout.height;
+    ensure(ctx, height + 10);
+    const imageX = centered ? MARGIN + indent + (maxW - width) / 2 : x;
+    ctx.page.drawImage(embedded, { x: imageX, y: ctx.y - height, width, height });
+    ctx.y -= height + 8;
+  } catch {
+    const fallback = placeholderImage(alt);
+    try {
+      const embedded = await embedPdfImage(ctx.pdf, fallback);
+      const layout = pdfImageLayout(fallback, Math.min(maxW, 180));
+      ensure(ctx, layout.height + 10);
+      ctx.page.drawImage(embedded, { x, y: ctx.y - layout.height, width: layout.width, height: layout.height });
+      ctx.y -= layout.height + 8;
+    } catch {
+      drawText(ctx, `[${alt}]`, { indent, gap: gapAfter, color });
+    }
+  }
+}
+
 async function drawRichInner(
   ctx: Ctx,
   inner: string,
@@ -205,28 +243,7 @@ async function drawRichInner(
 
   for (const part of parts) {
     if (part.type === "image") {
-      const parsed = await resolveImageForExport(part.src, part.alt);
-      try {
-        const embedded = await embedPdfImage(ctx.pdf, parsed);
-        let width = Math.min(maxW, embedded.width);
-        const height = (embedded.height / embedded.width) * width;
-        ensure(ctx, height + 10);
-        const imageX = centered ? MARGIN + indent + (maxW - width) / 2 : x;
-        ctx.page.drawImage(embedded, { x: imageX, y: ctx.y - height, width, height });
-        ctx.y -= height + 8;
-      } catch {
-        const fallback = placeholderImage(part.alt);
-        try {
-          const embedded = await embedPdfImage(ctx.pdf, fallback);
-          const width = Math.min(maxW, 180);
-          const height = (embedded.height / embedded.width) * width;
-          ensure(ctx, height + 10);
-          ctx.page.drawImage(embedded, { x, y: ctx.y - height, width, height });
-          ctx.y -= height + 8;
-        } catch {
-          drawText(ctx, `[${part.alt}]`, { indent, gap: gapAfter, color });
-        }
-      }
+      await drawExportedImage(ctx, part.src, part.alt, attrs, opts);
       continue;
     }
 
@@ -237,10 +254,36 @@ async function drawRichInner(
   }
 }
 
+async function drawRichHtmlWithImages(ctx: Ctx, html: string) {
+  const parts = splitHtmlByImages(html);
+  for (const part of parts) {
+    if (part.type === "image") {
+      const align = alignmentForImageAt(html, part.index);
+      const attrs = String(align).includes("center") ? ' style="text-align:center;"' : "";
+      await drawExportedImage(ctx, part.src, part.alt, attrs);
+      continue;
+    }
+
+    const chunk = part.html.trim();
+    if (!chunk) continue;
+    if (htmlContainsImages(chunk)) {
+      await drawRichHtmlWithImages(ctx, chunk);
+      continue;
+    }
+
+    await drawRichText(ctx, chunk);
+  }
+}
+
 async function drawRichText(ctx: Ctx, text: string) {
   if (!text?.trim()) return;
   if (!looksLikeHtml(text)) {
     drawPlainText(ctx, text);
+    return;
+  }
+
+  if (htmlContainsImages(text)) {
+    await drawRichHtmlWithImages(ctx, text);
     return;
   }
 
@@ -286,11 +329,6 @@ async function drawRichText(ctx: Ctx, text: string) {
 
       await drawRichInner(ctx, inner, attrs);
     }
-    return;
-  }
-
-  if (htmlContainsImages(text)) {
-    await drawRichInner(ctx, text);
     return;
   }
 

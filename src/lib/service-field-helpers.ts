@@ -163,8 +163,14 @@ export function normalizeExtraSectionsForForm(raw: unknown): { title: string; co
   }
   return (raw as LegacyExtra[]).map((sec) => ({
     title: sec.title ?? "",
-    content: sec.content ?? "",
+    content: normalizeSectionContent(sec.content),
   }));
+}
+
+function normalizeSectionContent(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return listFieldHtml(content as string[]);
+  return "";
 }
 
 export function normalizeExtraSectionsForExport(raw: unknown): { title: string; content: string }[] {
