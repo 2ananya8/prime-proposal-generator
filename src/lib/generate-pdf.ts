@@ -17,10 +17,9 @@ import { plainTextField, decodeHtmlEntities, looksLikeHtml } from "./html-conten
 import { parseHtmlTableInner, splitRichHtmlBlocks } from "./rich-html-table";
 import {
   embedPdfImage,
-  parseImageDataUrl,
   placeholderImage,
 } from "./cover-page-assets";
-import { htmlContainsImages, splitHtmlByImages } from "./rich-html-images";
+import { htmlContainsImages, resolveImageForExport, splitHtmlByImages } from "./rich-html-images";
 import {
   buildCommercialsTableRows,
   COMMERCIALS_TABLE_HEADERS,
@@ -206,7 +205,7 @@ async function drawRichInner(
 
   for (const part of parts) {
     if (part.type === "image") {
-      const parsed = parseImageDataUrl(part.src, part.alt) ?? placeholderImage(part.alt);
+      const parsed = await resolveImageForExport(part.src, part.alt);
       try {
         const embedded = await embedPdfImage(ctx.pdf, parsed);
         let width = Math.min(maxW, embedded.width);
@@ -216,7 +215,17 @@ async function drawRichInner(
         ctx.page.drawImage(embedded, { x: imageX, y: ctx.y - height, width, height });
         ctx.y -= height + 8;
       } catch {
-        drawText(ctx, `[${part.alt}]`, { indent, gap: gapAfter, color });
+        const fallback = placeholderImage(part.alt);
+        try {
+          const embedded = await embedPdfImage(ctx.pdf, fallback);
+          const width = Math.min(maxW, 180);
+          const height = (embedded.height / embedded.width) * width;
+          ensure(ctx, height + 10);
+          ctx.page.drawImage(embedded, { x, y: ctx.y - height, width, height });
+          ctx.y -= height + 8;
+        } catch {
+          drawText(ctx, `[${part.alt}]`, { indent, gap: gapAfter, color });
+        }
       }
       continue;
     }

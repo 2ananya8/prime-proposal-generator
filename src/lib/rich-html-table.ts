@@ -49,7 +49,7 @@ export function parseHtmlTables(html: string): ParsedHtmlTable[] {
 /** Top-level rich HTML blocks in document order (paragraphs, lists, headings, tables). */
 export function splitRichHtmlBlocks(html: string): { tag: string; inner: string; attrs: string }[] {
   const blocks: { tag: string; inner: string; attrs: string }[] = [];
-  const re = /<(p|ul|ol|h[1-6]|table)([^>]*)>([\s\S]*?)<\/\1>/gi;
+  const re = /<(p|div|ul|ol|h[1-6]|table)([^>]*)>([\s\S]*?)<\/\1>/gi;
   for (const match of html.matchAll(re)) {
     blocks.push({ tag: match[1].toLowerCase(), attrs: match[2] ?? "", inner: match[3] });
   }

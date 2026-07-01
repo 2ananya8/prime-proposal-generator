@@ -1,5 +1,6 @@
 import type { ProposalPreviewData } from "./proposal-preview";
 import { expandListField, plainTextField } from "./html-content";
+import { htmlContainsImages } from "./rich-html-images";
 import {
   listFieldHtml,
   normalizeApproachForExport,
@@ -12,7 +13,7 @@ import { getScopeEngagementText, isScopeEngagementField } from "./scope-fields";
 
 /** True when rich-text or plain field has visible content. */
 export function hasFilledText(text: string | undefined | null): boolean {
-  return Boolean(plainTextField(text));
+  return Boolean(plainTextField(text) || htmlContainsImages(text));
 }
 
 export function hasListItems(items: string[] | undefined | null): boolean {

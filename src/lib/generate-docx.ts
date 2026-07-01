@@ -109,14 +109,14 @@ function inlineSegmentsToRuns(segs: InlineSeg[], fontSize = 22) {
   return segs.map((seg) => new TextRun({ text: seg.text, bold: seg.bold, font: PROPOSAL_FONT_NAME, size: fontSize }));
 }
 
-function richInnerToDocxParagraphs(inner: string, attrs = ""): Paragraph[] {
+async function richInnerToDocxParagraphs(inner: string, attrs = ""): Promise<Paragraph[]> {
   const align = textAlignFromHtmlAttrs(attrs);
   const parts = splitHtmlByImages(inner);
   const blocks: Paragraph[] = [];
 
   for (const part of parts) {
     if (part.type === "image") {
-      blocks.push(buildDocxImageParagraph(part.src, part.alt, align));
+      blocks.push(await buildDocxImageParagraph(part.src, part.alt, align));
       continue;
     }
 
@@ -134,7 +134,7 @@ function richInnerToDocxParagraphs(inner: string, attrs = ""): Paragraph[] {
   return blocks;
 }
 
-function richHtmlBlockToDocx(tag: string, inner: string, attrs = ""): (Paragraph | Table)[] {
+async function richHtmlBlockToDocx(tag: string, inner: string, attrs = ""): Promise<(Paragraph | Table)[]> {
   if (tag === "table") {
     const parsed = parseHtmlTableInner(inner);
     if (!parsed.headers.length && !parsed.rows.length) return [];
@@ -145,10 +145,25 @@ function richHtmlBlockToDocx(tag: string, inner: string, attrs = ""): (Paragraph
     const blocks: Paragraph[] = [];
     const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
     const items = [...inner.matchAll(liRe)];
-    items.forEach((liMatch, i) => {
+    for (const [i, liMatch] of items.entries()) {
       const liInner = liMatch[1] ?? "";
+      if (htmlContainsImages(liInner)) {
+        if (tag === "ol") {
+          blocks.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: `${i + 1}. `, bold: false, font: PROPOSAL_FONT_NAME, size: 22 }),
+              ],
+              spacing: { after: 40 },
+            }),
+          );
+        }
+        blocks.push(...await richInnerToDocxParagraphs(liInner));
+        continue;
+      }
+
       const segs = htmlToInlineSegments(liInner);
-      if (!segs.length) return;
+      if (!segs.length) continue;
       const children =
         tag === "ol"
           ? [
@@ -164,19 +179,20 @@ function richHtmlBlockToDocx(tag: string, inner: string, attrs = ""): (Paragraph
           spacing: { after: 80 },
         }),
       );
-    });
+    }
     return blocks;
   }
 
   return richInnerToDocxParagraphs(inner, attrs);
 }
 
-function richHtmlToDocxParagraphs(html: string): (Paragraph | Table)[] {
+async function richHtmlToDocxParagraphs(html: string): Promise<(Paragraph | Table)[]> {
   if (!html?.trim()) return [];
 
   const blocks = splitRichHtmlBlocks(html);
   if (blocks.length) {
-    return blocks.flatMap(({ tag, inner, attrs }) => richHtmlBlockToDocx(tag, inner, attrs));
+    const nested = await Promise.all(blocks.map(({ tag, inner, attrs }) => richHtmlBlockToDocx(tag, inner, attrs)));
+    return nested.flat();
   }
 
   if (htmlContainsImages(html)) return richInnerToDocxParagraphs(html);
@@ -284,12 +300,12 @@ function buildTable(headers: string[], rows: string[][], totalWidth = 9360) {
 export async function generateProposalDocx(input: ProposalPreviewData): Promise<Uint8Array> {
   if (input.proposalType === "two_page") {
     const sections: (Paragraph | Table)[] = [];
-    sections.push(...richTextBlocks(input.executiveSummary || ""));
+    sections.push(...await richTextBlocks(input.executiveSummary || ""));
     sections.push(new Paragraph({ pageBreakBefore: true }));
     sections.push(h("Commercials", 1));
     sections.push(buildCommercialsTable(input.commercials));
     if (plainTextField(input.commercials.notes)) {
-      sections.push(...richTextBlocks(input.commercials.notes || ""));
+      sections.push(...await richTextBlocks(input.commercials.notes || ""));
     }
 
     const { footer, bottomMargin, footerDistance } = buildDocxContentFooter();
@@ -349,21 +365,21 @@ export async function generateProposalDocx(input: ProposalPreviewData): Promise<
   if (hasFilledText(content.executiveSummary)) {
     startPostDisclaimer();
     section("Executive Summary");
-    sections.push(...richTextBlocks(content.executiveSummary));
+    sections.push(...await richTextBlocks(content.executiveSummary));
   }
 
   startPostDisclaimer();
   section("Scope");
-  sections.push(...richTextBlocks(content.overviewHtml));
+  sections.push(...await richTextBlocks(content.overviewHtml));
 
   if (hasFilledText(content.projectObjectivesHtml)) {
     section("Project Objectives");
-    sections.push(...richTextBlocks(content.projectObjectivesHtml));
+    sections.push(...await richTextBlocks(content.projectObjectivesHtml));
   }
 
   if (hasFilledText(content.expectedBenefitsHtml)) {
     section("Expected Benefits");
-    sections.push(...richTextBlocks(content.expectedBenefitsHtml));
+    sections.push(...await richTextBlocks(content.expectedBenefitsHtml));
   }
 
   if (content.scopeText) {
@@ -373,13 +389,13 @@ export async function generateProposalDocx(input: ProposalPreviewData): Promise<
 
   if (hasFilledText(content.deliverablesHtml)) {
     section("Deliverables");
-    sections.push(...richTextBlocks(content.deliverablesHtml));
+    sections.push(...await richTextBlocks(content.deliverablesHtml));
   }
 
   if (hasFilledText(content.approachBody)) {
     section("Approach & Methodology");
     sections.push(pre(WAPT_APPROACH_INTRO));
-    sections.push(...richTextBlocks(content.approachBody));
+    sections.push(...await richTextBlocks(content.approachBody));
   }
 
   if (hasCoverageMatrix(service)) {
@@ -394,12 +410,12 @@ export async function generateProposalDocx(input: ProposalPreviewData): Promise<
 
   if (content.prerequisitesHtml) {
     section("Prerequisites");
-    sections.push(...richTextBlocks(content.prerequisitesHtml));
+    sections.push(...await richTextBlocks(content.prerequisitesHtml));
   }
 
   for (const sec of content.customSections) {
     section(customSectionTitle(sec.title));
-    sections.push(...richTextBlocks(sec.content));
+    sections.push(...await richTextBlocks(sec.content));
   }
 
   section("Commercials");
