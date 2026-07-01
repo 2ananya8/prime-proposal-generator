@@ -16,6 +16,12 @@ import { PROPOSAL_TERMS_AND_CONDITIONS_ITEMS } from "./wapt-template-sections";
 import { plainTextField, decodeHtmlEntities, looksLikeHtml } from "./html-content";
 import { parseHtmlTableInner, splitRichHtmlBlocks } from "./rich-html-table";
 import {
+  embedPdfImage,
+  parseImageDataUrl,
+  placeholderImage,
+} from "./cover-page-assets";
+import { htmlContainsImages, splitHtmlByImages } from "./rich-html-images";
+import {
   buildCommercialsTableRows,
   COMMERCIALS_TABLE_HEADERS,
 } from "./commercials-table";
@@ -183,7 +189,46 @@ function drawTokens(ctx: Ctx, tokens: Token[], opts: { x: number; indent?: numbe
   ctx.y -= opts.gapAfter ?? 2;
 }
 
-function drawRichText(ctx: Ctx, text: string) {
+async function drawRichInner(
+  ctx: Ctx,
+  inner: string,
+  attrs = "",
+  opts: { x?: number; indent?: number; size?: number; gapAfter?: number; color?: typeof TEXT } = {},
+) {
+  const parts = splitHtmlByImages(inner);
+  const indent = opts.indent ?? 0;
+  const x = opts.x ?? MARGIN + indent;
+  const size = opts.size ?? 10;
+  const gapAfter = opts.gapAfter ?? 2;
+  const color = opts.color ?? TEXT;
+  const maxW = PAGE_W - MARGIN * 2 - indent;
+  const centered = /text-align:\s*center/i.test(attrs);
+
+  for (const part of parts) {
+    if (part.type === "image") {
+      const parsed = parseImageDataUrl(part.src, part.alt) ?? placeholderImage(part.alt);
+      try {
+        const embedded = await embedPdfImage(ctx.pdf, parsed);
+        let width = Math.min(maxW, embedded.width);
+        const height = (embedded.height / embedded.width) * width;
+        ensure(ctx, height + 10);
+        const imageX = centered ? MARGIN + indent + (maxW - width) / 2 : x;
+        ctx.page.drawImage(embedded, { x: imageX, y: ctx.y - height, width, height });
+        ctx.y -= height + 8;
+      } catch {
+        drawText(ctx, `[${part.alt}]`, { indent, gap: gapAfter, color });
+      }
+      continue;
+    }
+
+    const segs = htmlToInlineSegments(part.html);
+    const tokens = tokenizeForWrap(segs);
+    if (!tokens.length) continue;
+    drawTokens(ctx, tokens, { x, indent, size, gapAfter, color });
+  }
+}
+
+async function drawRichText(ctx: Ctx, text: string) {
   if (!text?.trim()) return;
   if (!looksLikeHtml(text)) {
     drawPlainText(ctx, text);
@@ -192,7 +237,7 @@ function drawRichText(ctx: Ctx, text: string) {
 
   const blocks = splitRichHtmlBlocks(text);
   if (blocks.length) {
-    for (const { tag, inner } of blocks) {
+    for (const { tag, inner, attrs } of blocks) {
       if (tag === "table") {
         const parsed = parseHtmlTableInner(inner);
         if (parsed.headers.length || parsed.rows.length) {
@@ -204,11 +249,21 @@ function drawRichText(ctx: Ctx, text: string) {
       if (tag === "ul" || tag === "ol") {
         const liRe = /<li[^>]*>([\s\S]*?)<\/li>/gi;
         const items = [...inner.matchAll(liRe)];
-        items.forEach((liMatch, i) => {
+        for (const [i, liMatch] of items.entries()) {
           const liInner = liMatch[1] ?? "";
+          if (htmlContainsImages(liInner)) {
+            ensure(ctx, 14);
+            ctx.page.drawText("*", { x: MARGIN, y: ctx.y - 10, size: 10, font: ctx.bold, color: BRAND });
+            if (tag === "ol") {
+              drawText(ctx, `${i + 1}.`, { indent: 14, gap: 0, size: 10 });
+            }
+            await drawRichInner(ctx, liInner, "", { x: MARGIN + 14, indent: 14, size: 10, gapAfter: 2, color: TEXT });
+            continue;
+          }
+
           const segs = htmlToInlineSegments(liInner);
           const tokensBase = tokenizeForWrap(segs);
-          if (!tokensBase.length) return;
+          if (!tokensBase.length) continue;
 
           const prefixToken = tag === "ol" ? [{ text: `${i + 1}. `, bold: false }] : [];
           const tokens = [...prefixToken, ...tokensBase];
@@ -216,15 +271,17 @@ function drawRichText(ctx: Ctx, text: string) {
           ensure(ctx, 14);
           ctx.page.drawText("*", { x: MARGIN, y: ctx.y - 10, size: 10, font: ctx.bold, color: BRAND });
           drawTokens(ctx, tokens, { x: MARGIN + 14, indent: 14, size: 10, gapAfter: 2, color: TEXT });
-        });
+        }
         continue;
       }
 
-      const segs = htmlToInlineSegments(inner);
-      const tokens = tokenizeForWrap(segs);
-      if (!tokens.length) continue;
-      drawTokens(ctx, tokens, { x: MARGIN, indent: 0, size: 10, gapAfter: 2, color: TEXT });
+      await drawRichInner(ctx, inner, attrs);
     }
+    return;
+  }
+
+  if (htmlContainsImages(text)) {
+    await drawRichInner(ctx, text);
     return;
   }
 
@@ -468,12 +525,12 @@ export async function generateProposalPdf(input: ProposalPreviewData): Promise<U
       clientName: input.clientName, chrome, coverPageCount: 0,
     };
     newPage(ctx);
-    drawRichText(ctx, input.executiveSummary || "");
+    await drawRichText(ctx, input.executiveSummary || "");
     newPage(ctx);
     heading(ctx, "Commercials");
     drawCommercialsTable(ctx, input.commercials);
     if (plainTextField(input.commercials.notes)) {
-      drawRichText(ctx, input.commercials.notes || "");
+      await drawRichText(ctx, input.commercials.notes || "");
     }
     drawFooters(ctx);
     return await pdf.save();
@@ -516,21 +573,21 @@ export async function generateProposalPdf(input: ProposalPreviewData): Promise<U
   if (hasFilledText(content.executiveSummary)) {
     startPostDisclaimer();
     sec("Executive Summary");
-    drawRichText(ctx, content.executiveSummary);
+    await drawRichText(ctx, content.executiveSummary);
   }
 
   startPostDisclaimer();
   sec("Scope");
-  drawRichText(ctx, content.overviewHtml);
+  await drawRichText(ctx, content.overviewHtml);
 
   if (hasFilledText(content.projectObjectivesHtml)) {
     sec("Project Objectives");
-    drawRichText(ctx, content.projectObjectivesHtml);
+    await drawRichText(ctx, content.projectObjectivesHtml);
   }
 
   if (hasFilledText(content.expectedBenefitsHtml)) {
     sec("Expected Benefits");
-    drawRichText(ctx, content.expectedBenefitsHtml);
+    await drawRichText(ctx, content.expectedBenefitsHtml);
   }
 
   if (content.scopeText) {
@@ -540,13 +597,13 @@ export async function generateProposalPdf(input: ProposalPreviewData): Promise<U
 
   if (hasFilledText(content.deliverablesHtml)) {
     sec("Deliverables");
-    drawRichText(ctx, content.deliverablesHtml);
+    await drawRichText(ctx, content.deliverablesHtml);
   }
 
   if (hasFilledText(content.approachBody)) {
     sec("Approach & Methodology");
     drawText(ctx, WAPT_APPROACH_INTRO);
-    drawRichText(ctx, content.approachBody);
+    await drawRichText(ctx, content.approachBody);
   }
 
   if (hasCoverageMatrix(s)) {
@@ -561,12 +618,12 @@ export async function generateProposalPdf(input: ProposalPreviewData): Promise<U
 
   if (content.prerequisitesHtml) {
     sec("Prerequisites");
-    drawRichText(ctx, content.prerequisitesHtml);
+    await drawRichText(ctx, content.prerequisitesHtml);
   }
 
   for (const customSection of content.customSections) {
     sec(customSectionTitle(customSection.title));
-    drawRichText(ctx, customSection.content);
+    await drawRichText(ctx, customSection.content);
   }
 
   sec("Commercials");

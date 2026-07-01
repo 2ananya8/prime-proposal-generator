@@ -12,6 +12,12 @@ import { buildDocxEndingPage } from "./ending-page-docx";
 import { PROPOSAL_TERMS_AND_CONDITIONS_ITEMS } from "./wapt-template-sections";
 import { plainTextField, decodeHtmlEntities } from "./html-content";
 import { parseHtmlTableInner, splitRichHtmlBlocks } from "./rich-html-table";
+import {
+  buildDocxImageParagraph,
+  htmlContainsImages,
+  splitHtmlByImages,
+  textAlignFromHtmlAttrs,
+} from "./rich-html-images";
 import { getProposalSectionContent, hasCoverageMatrix, hasFilledMilestones, customSectionTitle, hasFilledText } from "./proposal-section-visibility";
 import {
   buildCommercialsTableRows,
@@ -103,7 +109,32 @@ function inlineSegmentsToRuns(segs: InlineSeg[], fontSize = 22) {
   return segs.map((seg) => new TextRun({ text: seg.text, bold: seg.bold, font: PROPOSAL_FONT_NAME, size: fontSize }));
 }
 
-function richHtmlBlockToDocx(tag: string, inner: string): (Paragraph | Table)[] {
+function richInnerToDocxParagraphs(inner: string, attrs = ""): Paragraph[] {
+  const align = textAlignFromHtmlAttrs(attrs);
+  const parts = splitHtmlByImages(inner);
+  const blocks: Paragraph[] = [];
+
+  for (const part of parts) {
+    if (part.type === "image") {
+      blocks.push(buildDocxImageParagraph(part.src, part.alt, align));
+      continue;
+    }
+
+    const segs = htmlToInlineSegments(part.html);
+    if (!segs.length) continue;
+    blocks.push(
+      new Paragraph({
+        alignment: align,
+        children: inlineSegmentsToRuns(segs, 22),
+        spacing: { after: 120 },
+      }),
+    );
+  }
+
+  return blocks;
+}
+
+function richHtmlBlockToDocx(tag: string, inner: string, attrs = ""): (Paragraph | Table)[] {
   if (tag === "table") {
     const parsed = parseHtmlTableInner(inner);
     if (!parsed.headers.length && !parsed.rows.length) return [];
@@ -137,14 +168,7 @@ function richHtmlBlockToDocx(tag: string, inner: string): (Paragraph | Table)[] 
     return blocks;
   }
 
-  const segs = htmlToInlineSegments(inner);
-  if (!segs.length) return [];
-  return [
-    new Paragraph({
-      children: inlineSegmentsToRuns(segs, 22),
-      spacing: { after: 120 },
-    }),
-  ];
+  return richInnerToDocxParagraphs(inner, attrs);
 }
 
 function richHtmlToDocxParagraphs(html: string): (Paragraph | Table)[] {
@@ -152,8 +176,10 @@ function richHtmlToDocxParagraphs(html: string): (Paragraph | Table)[] {
 
   const blocks = splitRichHtmlBlocks(html);
   if (blocks.length) {
-    return blocks.flatMap(({ tag, inner }) => richHtmlBlockToDocx(tag, inner));
+    return blocks.flatMap(({ tag, inner, attrs }) => richHtmlBlockToDocx(tag, inner, attrs));
   }
+
+  if (htmlContainsImages(html)) return richInnerToDocxParagraphs(html);
 
   const segs = htmlToInlineSegments(html);
   if (!segs.length) return [];
